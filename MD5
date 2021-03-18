@@ -1,0 +1,17 @@
+e3e3fa18d87d5db433882a51691f9b94 *DESCRIPTION
+be7a4ec5039011c62f725024c27dfd7c *NAMESPACE
+aaebf713905123557803ee06b9fd9e9f *R/TPreg.R
+873e7f40abe2267c6130aac0e0ebc505 *R/iddata.R
+809652f6caa1f267e0a7cbc00c6698c7 *R/mod.glm.fit.R
+47f09d02bef7b50e1947dc9f1e58fdae *R/plot.TPreg.R
+6541c7512ed9acfbc322ad8c3e1434fc *R/print.TPreg.R
+6567c2a208fffe674d0cbe4e92e265c2 *R/summary.TPreg.R
+fc536f38c54a4e00c319beefa695b53c *build/partial.rdb
+b85b96cc946a45e55e9971abedbd5b0e *data/colonTPreg.rda
+07b604b689f1d8a7d33bb9bd40daf533 *man/TPreg.Rd
+811a643d9d9f4eb5c979572a3c27a85a *man/colonTPreg.Rd
+ab7a0b0ec8890c50de30a0c332d8df5f *man/iddata.Rd
+8b2ccb4c488ace286456ba208ef45798 *man/idmTPreg-package.Rd
+9162fe64413e712c75294b34a6be36d0 *man/plot.TPreg.Rd
+301c4320709d8b6312ff011ab9c8ab13 *man/print.TPreg.Rd
+d9b9a12e18269b12a46a0c9bd1578146 *man/summary.TPreg.Rd
