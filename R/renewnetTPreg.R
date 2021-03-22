@@ -268,7 +268,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
 
 	# Bootstrap
 	# TODO add .inorder=FALSE to speedup (slighlty) bootstrap
-        r <- foreach(1:R, .combine=rbind,.export=c("iii","mod.glm.fit")) %dopar% {
+        r <- foreach(j=1:R, .combine=rbind,.export=c("iii","mod.glm.fit"),.errorhandling = "stop",.verbose = FALSE) %dopar% {
           X <- X
 	  # Resample data with replacement
           iboot <- sample(1:nrow(data1), replace=TRUE)
@@ -282,7 +282,14 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             result <-tryCatch(
               {
                 #Try
-                mod.glm.fit(X[iboot, ], res[iboot], family = family, weights = wei[iboot],start = rep(0,ncol(X)))
+                withCallingHandlers({
+                    mod.glm.fit(X[iboot, ], res[iboot], family = family, weights = wei[iboot],start = rep(0,ncol(X)))
+                  },
+                  warning=function(warn){
+                    warning(paste0("Warning caught on bootstrap sample ",j," for transition 1-1: ",warn$message))
+                  }
+                )
+
               },
               error=function(err) {
                 # Catch
@@ -291,25 +298,32 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
                   return(mod.glm.fit(X[iboot, ], res[iboot], family = family, weights = wei[iboot],
                                      start = rep(0,ncol(X)), control = glm.control(maxit = 1000)))
                 }
+                else if(stringr::str_detect(err$message,"no observations informative at iteration")){
+                      tmp<-rep(NA,dim(X)[[2L]]) 
+                      names(tmp)<-dimnames(X)[[2L]]
+                      return(list(coefficients=tmp,converged = FALSE))
+                }
                 else{
                   message(paste0("Exception caught upon calling modl.glm.fit for transition 1->1 Bootstrap, s=",s," t=", jumptime))
                   stop(err$message)
                 }
-              },
-              warning=function(warn){
-                if(stringr::str_detect(warn$message,"no observations informative at iteration")){
-                  return(list(converged = FALSE))
-                }
               }
             )
+            #print(result$converged)
             if(!result$converged || result$boundary){
               result$coefficients=result$coefficients*NA #set coef to NA if the algorithm did not converge
-            } 
+            }
             return(coefficients(result))  
           }
-          else return(NA) # if no event, coefficients are meaningless and one should return NA
+          else{
+            # if no event, coefficients are meaningless and one should return NA
+            tmp<-rep(NA,dim(X)[[2L]]) 
+            names(tmp)<-dimnames(X)[[2L]]
+            return(tmp)
+            }  
           
         }
+        
         boot.eta <- r
         boot.sd <- apply(boot.eta, 2, sd, na.rm = FALSE)
         return(c(eta, boot.sd))
@@ -506,7 +520,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         formula1 <- formula
         X <- X
 	# Bootstrap
-        r <- foreach(j=1:R, .combine=rbind, .export = c("iii","mod.glm.fit")) %do% {
+        r <- foreach(j=1:R, .combine=rbind, .export = c("iii","mod.glm.fit")) %dopar% {
           iboot <- sample(1:nrow(data1), replace=TRUE)
           iii <- rbind(iii, iboot)
           boot.data <- data1[iboot, ]
