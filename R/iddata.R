@@ -20,7 +20,7 @@ function(Stime, Sind , Iltime, Ilind, covar,...){
   }
   else  stop("Invalid Sind value")
   
-  if(sum(Iltime > Stime)!=0) 
+  if(any(Iltime > Stime,na.rm = TRUE)) 
     stop("Illness time can not be larger than Survival time")
   
   if (missing(Iltime)) 
