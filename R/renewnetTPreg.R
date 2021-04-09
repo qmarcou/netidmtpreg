@@ -31,55 +31,60 @@
 #             class = "link-glm")
 # }
 
-
 mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()$maxit,maxmaxit=1000,warning_str="",...){
-  if(any(response) & !all(response)){
-    # There must be at least one event in the sample in order to learn smthg
-    result <-tryCatch(
-      {
-        #Try
-        withCallingHandlers({
-          mod.glm.fit(X, response, family = family, weights = weights,start = rep(0,ncol(X)),control = glm.control(maxit = maxit))
-          },
-          warning=function(warn){
-            
-            if(stringr::str_detect(warn$message,"no observations informative at iteration")){
-              stop(paste0("Warning caught ",warning_str,": ",warn$message," returning NA"))
-            }
-            else{
-              warning(paste0(warning_str,warn$message))
-            }
-          }
-        )
-        
+  result <-tryCatch(
+    {
+      #Try
+      withCallingHandlers({
+        mod.glm.fit(X, response, family = family, weights = weights,start = rep(0,ncol(X)),control = glm.control(maxit = maxit))
       },
-      error=function(err) {
-        # Catch
-        if(err$message =="inner loop 1; cannot correct step size" ||
-           err$message =="inner loop 2; cannot correct step size"){
-          if(maxit*10<=maxmaxit){
-            # recursively call the wrapper with a greater maxit
-            return(mod.glm.fit.errorwrapper(X=X, response=response, family = family, weights = weights,
-                                            maxit = maxit*10, maxmaxit = maxmaxit))
-          }
-          else{
-            warning(paste0("Step size correction issue with maxmaxit reached: ",warning_str,"returning NA as result"))
-            tmp<-rep(NA,dim(X)[[2L]]) 
-            names(tmp)<-dimnames(X)[[2L]]
-            return(list(coefficients=tmp,converged = FALSE))
-          }
+      warning=function(warn){
+        
+        if(stringr::str_detect(warn$message,"no observations informative at iteration")){
+          stop(paste0("Warning caught ",warning_str,": ",warn$message," returning NA"))
         }
-        else if(stringr::str_detect(err$message,"no observations informative at iteration")){
+        else{
+          warning(paste0(warning_str,warn$message))
+        }
+      }
+      )
+      
+    },
+    error=function(err) {
+      # Catch
+      if(err$message =="inner loop 1; cannot correct step size" ||
+         err$message =="inner loop 2; cannot correct step size"){
+        if(maxit*10<=maxmaxit){
+          # recursively call the wrapper with a greater maxit
+          return(mod.glm.fit.errorwrapper(X=X, response=response, family = family, weights = weights,
+                                          maxit = maxit*10, maxmaxit = maxmaxit,warning_str = warning_str))
+        }
+        else{
+          warning(paste0("Step size correction issue with maxmaxit reached: ",warning_str,"returning NA as result"))
           tmp<-rep(NA,dim(X)[[2L]]) 
           names(tmp)<-dimnames(X)[[2L]]
           return(list(coefficients=tmp,converged = FALSE))
         }
-        else{
-          message(paste0("Exception caught upon calling modl.glm.fit",warning_str))
-          stop(err$message)
-        }
       }
-    )
+      else if(stringr::str_detect(err$message,"no observations informative at iteration")){
+        tmp<-rep(NA,dim(X)[[2L]]) 
+        names(tmp)<-dimnames(X)[[2L]]
+        return(list(coefficients=tmp,converged = FALSE))
+      }
+      else{
+        message(paste0("Exception caught upon calling modl.glm.fit",warning_str))
+        stop(err$message)
+      }
+    }
+  )
+  return(result)
+}
+
+mod.glm.fit.callingwrapper<-function(X,response,family,weights,maxit=glm.control()$maxit,maxmaxit=1000,warning_str="",...){
+  if(any(response) & !all(response)){
+    # There must be at least one event in the sample in order to learn smthg
+    result<-mod.glm.fit.errorwrapper(X=X, response=response, family = family, weights = weights,
+                                     maxit = maxit, maxmaxit = maxmaxit,warning_str = warning_str)
     #print(result$converged)
     if(!result$converged || result$boundary){
       result$coefficients=result$coefficients*NA #set coef to NA if the algorithm did not converge
@@ -301,14 +306,14 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         t <- x
         vv <- rellogit(t,data1)
         family <- binomial(link = vv)   
-        eta<-mod.glm.fit.errorwrapper( X, res, family = family, weights = wei,
-                                       warning_str = paste0("for transition 1->1, s=",s," t=", jumptime), maxmaxit = 1000)
+        eta<-mod.glm.fit.callingwrapper( X, res, family = family, weights = wei,
+                                       warning_str = paste0(" for transition 1->1, s=",s," t=", jumptime), maxmaxit = 1000)
 
         data1 <- data1 # FIXME again, wtf?
 
 	# Bootstrap
 	# TODO add .inorder=FALSE to speedup (slighlty) bootstrap
-        r <- foreach(j=1:R, .combine=rbind,.export=c("iii","mod.glm.fit"),.errorhandling = "stop",.verbose = FALSE) %dopar% {
+        r <- foreach(j=1:R, .combine=rbind,.export=c("iii","mod.glm.fit"),.errorhandling = "stop") %dopar% {
           X <- X
 	  # Resample data with replacement
           iboot <- sample(1:nrow(data1), replace=TRUE)
@@ -317,8 +322,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           vv <- rellogit(t,boot.data)
           family <- binomial(link = vv)
           
-          return(mod.glm.fit.errorwrapper(X[iboot, ], res[iboot], family = family, weights = wei[iboot],
-                                          warning_str = paste0("on bootstrap sample ",j," for transition 1->1 Bootstrap, s=",s," t=", jumptime),
+          return(mod.glm.fit.callingwrapper(X[iboot, ], res[iboot], family = family, weights = wei[iboot],
+                                          warning_str = paste0(" on bootstrap sample ",j," for transition 1->1, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
           
         }
@@ -370,22 +375,22 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         t=x
         vv <- rellogit(t,data1)
         family <- binomial(link = vv)
-        eta<-mod.glm.fit.errorwrapper( X, res, family = family, weights = wei,
-                                       warning_str = paste0("for transition 1->2, s=",s," t=", jumptime), maxmaxit = 1000)
+        eta<-mod.glm.fit.callingwrapper( X, res, family = family, weights = wei,
+                                       warning_str = paste0(" for transition 1->2, s=",s," t=", jumptime), maxmaxit = 1000)
         data1 <- data1
         formula1 <- formula
         X <- X
 
 	# Bootstrap
-        r <- foreach(1:R, .combine=rbind,.export=c("iii","mod.glm.fit")) %dopar% {
+        r <- foreach(j=1:R, .combine=rbind,.export=c("iii","mod.glm.fit")) %dopar% {
           iboot <- sample(1:nrow(data1), replace=TRUE)
           iii <- rbind(iii, iboot)
           boot.data <- data1[iboot, ]
           vv <- rellogit(t,boot.data)
           family <- binomial(link = vv)
           
-          return(mod.glm.fit.errorwrapper(X[iboot,],res[iboot],family=family,weights=wei[iboot],
-                                          warning_str = paste0("on bootstrap sample ",j," for transition 1->2 Bootstrap, s=",s," t=", jumptime),
+          return(mod.glm.fit.callingwrapper(X[iboot,],res[iboot],family=family,weights=wei[iboot],
+                                          warning_str = paste0(" on bootstrap sample ",j," for transition 1->2, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
           
         }
@@ -431,8 +436,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         vv <- offsetlogit(t,data1)
         family <- binomial(link = vv)
         
-        eta<-mod.glm.fit.errorwrapper( X, res, family = family, weights = wei,
-                                      warning_str = paste0("for transition 1->3, s=",s," t=", jumptime), maxmaxit = 1000)
+        eta<-mod.glm.fit.callingwrapper( X, res, family = family, weights = wei,
+                                      warning_str = paste0(" for transition 1->3, s=",s," t=", jumptime), maxmaxit = 1000)
         data1 <- data1
         formula1 <- formula
         X <- X
@@ -444,8 +449,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           vv <- rellogit(t,boot.data)
           family <- binomial(link = vv)
           
-          return(mod.glm.fit.errorwrapper(X[iboot, ], res[iboot], family = family, weights = wei[iboot],
-                                          warning_str = paste0("on bootstrap sample ",j," for transition 1->3 Bootstrap, s=",s," t=", jumptime),
+          return(mod.glm.fit.callingwrapper(X[iboot, ], res[iboot], family = family, weights = wei[iboot],
+                                          warning_str = paste0(" on bootstrap sample ",j," for transition 1->3, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
 
         }
@@ -493,21 +498,22 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         vv <- offsetlogit(t,data2)
         family <- binomial(link = vv)
         
-        eta<-mod.glm.fit.errorwrapper( X2, res, family = family, weights=wei,
-                                       warning_str = paste0("for transition 2->3, s=",s," t=", jumptime), maxmaxit = 1000)
+        eta<-mod.glm.fit.callingwrapper( X2, res, family = family, weights=wei,
+                                       warning_str = paste0(" for transition 2->3, s=",s," t=", jumptime), maxmaxit = 1000)
         data2 <- data2
         formula1 <- formula
         X2 <- X2
+        
 	#Bootstrap
-        r <- foreach(1:R, .combine = rbind, .export=c("iii","mod.glm.fit")) %dopar% {
+        r <- foreach(j=1:R, .combine = rbind, .export=c("iii","mod.glm.fit"),.verbose = FALSE,.errorhandling = "stop") %dopar% {
           iboot <- sample(1:nrow(data2), replace=TRUE)
           iii <- rbind(iii, iboot)
           boot.data <- data2[iboot, ]
           vv <- rellogit(t,boot.data)
           family <- binomial(link = vv)
           
-          return(mod.glm.fit.errorwrapper(X2[iboot, ], res[iboot], family = family, weights = wei[iboot],
-                                          warning_str = paste0("on bootstrap sample ",j," for transition 1->3 Bootstrap, s=",s," t=", jumptime),
+          return(mod.glm.fit.callingwrapper(X2[iboot, ], res[iboot], family = family, weights = wei[iboot],
+                                          warning_str = paste0(" on bootstrap sample ",j," for transition 1->3, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
         }
         boot.eta <- r
