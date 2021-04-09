@@ -156,7 +156,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
   covname= colnames(data)[ind]
   }
 
-  ordata = data[, c("id", "Zt", "Tt", "delta1", "delta", "age", covname )] # TODO probably add sex too
+  ordata = data[, c("id", "Zt", "Tt", "delta1", "delta", "age", "sexe", "dept", "date_chir" )] # TODO probably add sex too
   L.or <- nrow(ordata)
   #Remove lines with at least one missing value
   comdata <- ordata[complete.cases(ordata),]
