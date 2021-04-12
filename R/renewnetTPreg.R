@@ -103,7 +103,7 @@ mod.glm.fit.callingwrapper<-function(X,response,family,weights,maxit=glm.control
 
 
 renewnetTPreg <-
-function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age'), s = 0, t = NULL,R = 199, by = NULL, trans, ncores = NULL)
+function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age'), s = 0, t = NULL,R = 199, by = NULL, trans, ncores = 1)
 {
 
 # Dictionnary of used variables:
@@ -219,10 +219,6 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       }
     }
 
-    if(is.null(ncores)){
-    # FIXME this is a hidden default argument, just put 1 as default in function def instead of NULL
-    ncores = 1
-    }
     registerDoParallel(cores = ncores)
 
     co <- vector("list", 4)
@@ -313,7 +309,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
 
 	# Bootstrap
 	# TODO add .inorder=FALSE to speedup (slighlty) bootstrap
-        r <- foreach(j=1:R, .combine=rbind,.export=c("iii","mod.glm.fit"),.errorhandling = "stop") %dopar% {
+        r <- foreach(j=1:R, .combine=rbind,.export=c("iii","mod.glm.fit"),.errorhandling = "stop",.inorder = FALSE) %dopar% {
           X <- X
 	  # Resample data with replacement
           iboot <- sample(1:nrow(data1), replace=TRUE)
@@ -338,12 +334,12 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       coef <- eta[ , 1:(length(eta[1,])/2)]
       sd <- eta[ , (length(eta[1, ])/2 + 1):(length(eta[1, ]))]
       colnames(sd) <- colnames(coef)
-      CO <- list(transition = "11", time = vec.t11, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
+      CO <- list(transition = "11",formula=formula, time = vec.t11, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
         co$co11 = CO
       }
       else {
-        co <- list("co" = CO, call = match.call(),transition = trans, s = s, t = t, n.misobs = n.misobs)
+        co <- list("co" = CO, call = match.call(),formula=formula,transition = trans, s = s, t = t, n.misobs = n.misobs)
         class(co) = "TPreg" 
         return(co)
       }
@@ -382,7 +378,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         X <- X
 
 	# Bootstrap
-        r <- foreach(j=1:R, .combine=rbind,.export=c("iii","mod.glm.fit")) %dopar% {
+        r <- foreach(j=1:R, .combine=rbind,.export=c("iii","mod.glm.fit"),.errorhandling = "stop",.inorder = FALSE) %dopar% {
           iboot <- sample(1:nrow(data1), replace=TRUE)
           iii <- rbind(iii, iboot)
           boot.data <- data1[iboot, ]
@@ -402,12 +398,12 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       coef <- eta[ , 1:(length(eta[1, ])/2)]
       sd <- eta[ ,(length(eta[1, ])/2+1):(length(eta[1, ]))]
       colnames(sd) <- colnames(coef)
-      CO = list( transition = "12", time = vec.t12, coefficients = coef, SD = sd, LWL = coef - 1.96*sd,UPL=coef+1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
+      CO = list( transition = "12",formula=formula, time = vec.t12, coefficients = coef, SD = sd, LWL = coef - 1.96*sd,UPL=coef+1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
         co$co12 = CO
       }
       else {
-        co <- list("co" = CO, call = match.call(), transition = trans, s = s, t = t, n.misobs = n.misobs)
+        co <- list("co" = CO, call = match.call(),formula=formula, transition = trans, s = s, t = t, n.misobs = n.misobs)
         class(co) = "TPreg" 
         return(co)
       }
@@ -442,7 +438,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         formula1 <- formula
         X <- X
 	# Bootstrap
-        r <- foreach(j=1:R, .combine=rbind, .export = c("iii","mod.glm.fit")) %dopar% {
+        r <- foreach(j=1:R, .combine=rbind, .export = c("iii","mod.glm.fit"),.errorhandling = "stop",.inorder = FALSE) %dopar% {
           iboot <- sample(1:nrow(data1), replace=TRUE)
           iii <- rbind(iii, iboot)
           boot.data <- data1[iboot, ]
@@ -463,12 +459,12 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       coef <- eta[ ,1:(length(eta[1, ])/2)]
       sd <- eta[ ,(length(eta[1, ])/2 + 1):(length(eta[1, ]))]
       colnames(sd) <- colnames(coef)
-      CO <- list(transition = "13", time = vec.t13, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
+      CO <- list(transition = "13",formula=formula, time = vec.t13, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
         co$co13 = CO
       }
       else {
-        co <- list("co" = CO, call = match.call(), transition = trans, s = s, t = t, n.misobs = n.misobs)
+        co <- list("co" = CO, call = match.call(),formula=formula, transition = trans, s = s, t = t, n.misobs = n.misobs)
         class(co) = "TPreg" 
         return(co)
       }
@@ -505,7 +501,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         X2 <- X2
         
 	#Bootstrap
-        r <- foreach(j=1:R, .combine = rbind, .export=c("iii","mod.glm.fit"),.verbose = FALSE,.errorhandling = "stop") %dopar% {
+        r <- foreach(j=1:R, .combine = rbind, .export=c("iii","mod.glm.fit"),.errorhandling = "stop",.inorder = FALSE) %dopar% {
           iboot <- sample(1:nrow(data2), replace=TRUE)
           iii <- rbind(iii, iboot)
           boot.data <- data2[iboot, ]
@@ -524,12 +520,12 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       coef <- eta[ , 1:(length(eta[1, ])/2)]
       sd <- eta[ , (length(eta[1, ])/2 + 1):(length(eta[1, ]))]
       colnames(sd) <- colnames(coef)
-      CO <- list(transition = "23", time = vec.t23, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
+      CO <- list(transition = "23", formula=formula, time = vec.t23, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
         co$co23=CO
       } 
       else {
-        co <- list("co" = CO, call = match.call(), transition = trans, s = s, t = t, n.misobs=n.misobs)
+        co <- list("co" = CO, call = match.call(),formula=formula, transition = trans, s = s, t = t, n.misobs=n.misobs)
         class(co)="TPreg" 
         return(co)
       }
@@ -538,6 +534,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
     # ? edit return object properties if "all"??
     if(trans == "all"){
       co$call = match.call()
+      co$formula = formula
       co$transition = "all"
       co$s = s
       co$t = t
