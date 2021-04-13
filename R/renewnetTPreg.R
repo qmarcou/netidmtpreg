@@ -187,7 +187,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
     if(s == 0 & (trans == "23" || trans == "all" )) # TODO there's probably better way around
       stop("for the transition '23' argument 's' must be larger than 0")
     if (trans == "23" || trans == "all" ){
-      X2 <- X[comdata$Zt<=s & comdata$Tt>s ,] # patients in state 2 at time s
+      X2 <- X[comdata$Zt<=s & comdata$Tt>s , ,drop=FALSE] # patients in state 2 at time s
       data2 <- comdata[comdata$Zt <= s & comdata$Tt > s,] 
       Sfit23 <- summary( survfit(Surv(data2$Tt, data2$delta == 0)~ +1))
       Shat23 <- rbind(c(0,1),data.frame(time = Sfit23$time, surv = Sfit23$surv))
@@ -199,7 +199,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       }
     }
     if (trans=="11" ||trans=="12" ||trans=="13" || trans=="all"){
-      X <- X[comdata$Zt > s, ] # FIXME rename to X1 in order to remain consistent with X2/data2/... and data1 
+      X <- X[comdata$Zt > s, ,drop=FALSE] # FIXME rename to X1 in order to remain consistent with X2/data2/... and data1 
       data1 <- comdata[comdata$Zt > s,] 
       Sfit1 <- summary( survfit(Surv(data1$Zt, data1$delta1 == 0)~ +1))
       Shat1 <- rbind(c(0,1), data.frame(time = Sfit1$time, surv = Sfit1$surv))
@@ -318,7 +318,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           vv <- rellogit(t,boot.data)
           family <- binomial(link = vv)
           
-          return(mod.glm.fit.callingwrapper(X[iboot, ], res[iboot], family = family, weights = wei[iboot],
+          return(mod.glm.fit.callingwrapper(X[iboot, ,drop=FALSE], res[iboot], family = family, weights = wei[iboot],
                                           warning_str = paste0(" on bootstrap sample ",j," for transition 1->1, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
           
@@ -331,8 +331,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       })
       
       eta <- data.frame(do.call("rbind", eta.list))
-      coef <- eta[ , 1:(length(eta[1,])/2)]
-      sd <- eta[ , (length(eta[1, ])/2 + 1):(length(eta[1, ]))]
+      coef <- eta[ , 1:(length(eta[1,])/2),drop=FALSE]
+      sd <- eta[ , (length(eta[1, ])/2 + 1):(length(eta[1, ])),drop=FALSE]
       colnames(sd) <- colnames(coef)
       CO <- list(transition = "11",formula=formula, time = vec.t11, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
@@ -385,7 +385,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           vv <- rellogit(t,boot.data)
           family <- binomial(link = vv)
           
-          return(mod.glm.fit.callingwrapper(X[iboot,],res[iboot],family=family,weights=wei[iboot],
+          return(mod.glm.fit.callingwrapper(X[iboot, ,drop=FALSE],res[iboot],family=family,weights=wei[iboot],
                                           warning_str = paste0(" on bootstrap sample ",j," for transition 1->2, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
           
@@ -395,8 +395,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         return(c(eta, boot.sd))
       })
       eta <- data.frame(do.call("rbind", eta.list))
-      coef <- eta[ , 1:(length(eta[1, ])/2)]
-      sd <- eta[ ,(length(eta[1, ])/2+1):(length(eta[1, ]))]
+      coef <- eta[ , 1:(length(eta[1, ])/2),drop=FALSE]
+      sd <- eta[ ,(length(eta[1, ])/2+1):(length(eta[1, ])),drop=FALSE]
       colnames(sd) <- colnames(coef)
       CO = list( transition = "12",formula=formula, time = vec.t12, coefficients = coef, SD = sd, LWL = coef - 1.96*sd,UPL=coef+1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
@@ -432,6 +432,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         vv <- offsetlogit(t,data1)
         family <- binomial(link = vv)
         
+
         eta<-mod.glm.fit.callingwrapper( X, res, family = family, weights = wei,
                                       warning_str = paste0(" for transition 1->3, s=",s," t=", jumptime), maxmaxit = 1000)
         data1 <- data1
@@ -445,7 +446,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           vv <- rellogit(t,boot.data)
           family <- binomial(link = vv)
           
-          return(mod.glm.fit.callingwrapper(X[iboot, ], res[iboot], family = family, weights = wei[iboot],
+          return(mod.glm.fit.callingwrapper(X[iboot, ,drop=FALSE], res[iboot], family = family, weights = wei[iboot],
                                           warning_str = paste0(" on bootstrap sample ",j," for transition 1->3, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
 
@@ -456,8 +457,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         return(c(eta, boot.sd))
       })
       eta <- data.frame(do.call("rbind", eta.list))
-      coef <- eta[ ,1:(length(eta[1, ])/2)]
-      sd <- eta[ ,(length(eta[1, ])/2 + 1):(length(eta[1, ]))]
+      coef <- eta[ ,1:(length(eta[1, ])/2),drop=FALSE]
+      sd <- eta[ ,(length(eta[1, ])/2 + 1):(length(eta[1, ])),drop=FALSE]
       colnames(sd) <- colnames(coef)
       CO <- list(transition = "13",formula=formula, time = vec.t13, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
@@ -508,7 +509,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           vv <- rellogit(t,boot.data)
           family <- binomial(link = vv)
           
-          return(mod.glm.fit.callingwrapper(X2[iboot, ], res[iboot], family = family, weights = wei[iboot],
+          return(mod.glm.fit.callingwrapper(X2[iboot, ,drop=FALSE], res[iboot], family = family, weights = wei[iboot],
                                           warning_str = paste0(" on bootstrap sample ",j," for transition 1->3, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
         }
@@ -517,8 +518,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         return(c(eta, boot.sd))
       })
       eta <- data.frame(do.call("rbind", eta.list))
-      coef <- eta[ , 1:(length(eta[1, ])/2)]
-      sd <- eta[ , (length(eta[1, ])/2 + 1):(length(eta[1, ]))]
+      coef <- eta[ , 1:(length(eta[1, ])/2),drop=FALSE]
+      sd <- eta[ , (length(eta[1, ])/2 + 1):(length(eta[1, ])),drop=FALSE]
       colnames(sd) <- colnames(coef)
       CO <- list(transition = "23", formula=formula, time = vec.t23, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
