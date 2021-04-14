@@ -71,6 +71,15 @@ mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()
         names(tmp)<-dimnames(X)[[2L]]
         return(list(coefficients=tmp,converged = FALSE))
       }
+      else if(stringr::str_detect(err$message,"NA/NaN/Inf in 'y'")){
+        # Handle an error that i do not fully understand, this seems to be linked to the divergence of the algorithm
+        # with derivatives regarding parameters exploding. I do not know whether this could be linked to Layla's
+        # modification to the glm.fit code
+        warning("mod.glm.fit crashed with error \"",err$message,"\"",warning_str,", returning NA")
+        tmp<-rep(NA,dim(X)[[2L]]) 
+        names(tmp)<-dimnames(X)[[2L]]
+        return(list(coefficients=tmp,converged = FALSE))
+      }
       else{
         message(paste0("Exception caught upon calling modl.glm.fit",warning_str))
         stop(err$message)
