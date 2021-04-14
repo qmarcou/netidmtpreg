@@ -164,8 +164,11 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
   ind = ind[!is.na(ind)]
   covname= colnames(data)[ind]
   }
-
-  ordata = data[, c("id", "Zt", "Tt", "delta1", "delta", "age", "sexe", "dept", "date_chir" )] # TODO probably add sex too
+  
+  # Filter useful columns based rmap and formula arguments
+  formnames<- all.vars(formula,functions = FALSE,unique = TRUE)
+  rmapnames<- all.vars(substitute(rmap),functions = FALSE,unique = TRUE)
+  ordata = data[, c(c("id", "Zt", "Tt", "delta1", "delta"),rmapnames, formnames )]
   L.or <- nrow(ordata)
   #Remove lines with at least one missing value
   comdata <- ordata[complete.cases(ordata),]
