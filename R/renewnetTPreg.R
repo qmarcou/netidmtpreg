@@ -159,7 +159,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
     stop("'formula' must match with 'data'")
   }
   else{ #FIXME useless else since if is a stop
-    X<- model.matrix(mt, mf, contrasts)
+    X<- model.matrix(mt, mf, contrasts,na.action=na.pass) # all missing values will be retained
     ind = match(colnames(X) , colnames(data))
   ind = ind[!is.na(ind)]
   covname= colnames(data)[ind]
@@ -168,10 +168,13 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
   # Filter useful columns based rmap and formula arguments
   formnames<- all.vars(formula,functions = FALSE,unique = TRUE)
   rmapnames<- all.vars(substitute(rmap),functions = FALSE,unique = TRUE)
-  ordata = data[, c(c("id", "Zt", "Tt", "delta1", "delta"),rmapnames, formnames )]
+  ordata = data[, unique(c(c("id", "Zt", "Tt", "delta1", "delta"),rmapnames, formnames ),fromLast=FALSE)]
+  
   L.or <- nrow(ordata)
   #Remove lines with at least one missing value
   comdata <- ordata[complete.cases(ordata),]
+  X<-X[complete.cases(ordata), ,drop=FALSE]
+  
   L.com <- nrow(comdata)
   n.misobs <- L.or - L.com
   if(is.null(by)){
