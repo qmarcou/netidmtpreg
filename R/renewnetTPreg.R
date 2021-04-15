@@ -148,10 +148,12 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
  # why not use directly stats::model.frame(formula,data) ?
   formula <- formula # wtf?
   cl <- match.call() #get the function call (or ""command line"") string with named arguments
-  mf <- match.call(expand.dots = FALSE) # same without expending ... argument
+  mf <- match.call(expand.dots = FALSE) # same without expending ... argument, the idea is to reuse the function call, and substitute the function by model.frame
   m  <- match(c("formula", "data"), names(mf), 0L) # look for "formula" and "data" in arguments outside '...' and return their indices, return 0L (=0) if not found
   mf <- mf[c(1L, m)]
-  mf$drop.unused.levels <- TRUE
+  # add options for model.frame()
+  mf$drop.unused.levels <- TRUE # simplify factors and retain only used levels
+  mf$na.action <- na.pass # all missing values will be retained in the model frame
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())   
   mt <- attr(mf, "terms")
@@ -159,7 +161,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
     stop("'formula' must match with 'data'")
   }
   else{ #FIXME useless else since if is a stop
-    X<- model.matrix(mt, mf, contrasts,na.action=na.pass) # all missing values will be retained
+    X<- model.matrix(mt, mf, contrasts) 
     ind = match(colnames(X) , colnames(data))
   ind = ind[!is.na(ind)]
   covname= colnames(data)[ind]
