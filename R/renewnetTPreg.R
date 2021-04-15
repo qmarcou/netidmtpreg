@@ -341,14 +341,14 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         
         boot.eta <- r
         boot.sd <- apply(boot.eta, 2, sd, na.rm = FALSE)
-        return(c(eta, boot.sd))
 	# QUESTION why not returning the 95%CI ? Asymptotic normality of the estimator guaranteed?
+        return(list(eta=bind_rows(eta), sd=bind_rows(boot.sd)))
       })
+      eta_list<-lapply(eta.list,function(x) x[["eta"]])
+      sd_list<-lapply(eta.list,function(x) x[["sd"]])
+      coef <- do.call("bind_rows", eta_list)
+      sd <- do.call("bind_rows", sd_list)
       
-      eta <- data.frame(do.call("rbind", eta.list))
-      coef <- eta[ , 1:(length(eta[1,])/2),drop=FALSE]
-      sd <- eta[ , (length(eta[1, ])/2 + 1):(length(eta[1, ])),drop=FALSE]
-      colnames(sd) <- colnames(coef)
       CO <- list(transition = "11",formula=formula, time = vec.t11, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
         co$co11 = CO
@@ -407,12 +407,13 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         }
         boot.eta <- r
         boot.sd <- apply(boot.eta, 2, sd, na.rm = FALSE)
-        return(c(eta, boot.sd))
+        return(list(eta=bind_rows(eta), sd=bind_rows(boot.sd)))
       })
-      eta <- data.frame(do.call("rbind", eta.list))
-      coef <- eta[ , 1:(length(eta[1, ])/2),drop=FALSE]
-      sd <- eta[ ,(length(eta[1, ])/2+1):(length(eta[1, ])),drop=FALSE]
-      colnames(sd) <- colnames(coef)
+      eta_list<-lapply(eta.list,function(x) x[["eta"]])
+      sd_list<-lapply(eta.list,function(x) x[["sd"]])
+      coef <- do.call("bind_rows", eta_list)
+      sd <- do.call("bind_rows", sd_list)
+      
       CO = list( transition = "12",formula=formula, time = vec.t12, coefficients = coef, SD = sd, LWL = coef - 1.96*sd,UPL=coef+1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
         co$co12 = CO
@@ -469,12 +470,13 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         #print(r)
         boot.eta <- r
         boot.sd <- apply(boot.eta, 2, sd, na.rm = FALSE) #this will return NA if any bootstrap sample did not contain any event
-        return(c(eta, boot.sd))
+        return(list(eta=bind_rows(eta), sd=bind_rows(boot.sd)))
       })
-      eta <- data.frame(do.call("rbind", eta.list))
-      coef <- eta[ ,1:(length(eta[1, ])/2),drop=FALSE]
-      sd <- eta[ ,(length(eta[1, ])/2 + 1):(length(eta[1, ])),drop=FALSE]
-      colnames(sd) <- colnames(coef)
+      eta_list<-lapply(eta.list,function(x) x[["eta"]])
+      sd_list<-lapply(eta.list,function(x) x[["sd"]])
+      coef <- do.call("bind_rows", eta_list)
+      sd <- do.call("bind_rows", sd_list)
+      
       CO <- list(transition = "13",formula=formula, time = vec.t13, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
         co$co13 = CO
@@ -530,12 +532,13 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         }
         boot.eta <- r
         boot.sd <- apply(boot.eta,2, sd, na.rm = FALSE)
-        return(c(eta, boot.sd))
+        return(list(eta=bind_rows(eta), sd=bind_rows(boot.sd)))
       })
-      eta <- data.frame(do.call("rbind", eta.list))
-      coef <- eta[ , 1:(length(eta[1, ])/2),drop=FALSE]
-      sd <- eta[ , (length(eta[1, ])/2 + 1):(length(eta[1, ])),drop=FALSE]
-      colnames(sd) <- colnames(coef)
+      eta_list<-lapply(eta.list,function(x) x[["eta"]])
+      sd_list<-lapply(eta.list,function(x) x[["sd"]])
+      coef <- do.call("bind_rows", eta_list)
+      sd <- do.call("bind_rows", sd_list)
+      
       CO <- list(transition = "23", formula=formula, time = vec.t23, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
       if(trans == "all"){
         co$co23=CO
