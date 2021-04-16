@@ -36,7 +36,7 @@ mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()
     {
       #Try
       withCallingHandlers({
-        mod.glm.fit(X, response, family = family, weights = weights,start = rep(0,ncol(X)),control = glm.control(maxit = maxit))
+        mod.glm.fit2(X, response, family = family, weights = weights,start = rep(0,ncol(X)),control = glm.control(maxit = 1000))
       },
       warning=function(warn){
         
