@@ -1,17 +1,17 @@
-Package: idmTPreg
+Package: netidmtpreg
 Type: Package
-Title: Regression Model for Progressive Illness Death Data
-Version: 1.1
-Date: 2018-02-23
-Author: Leyla Azarang and Manuel Oviedo de la Fuente 
-Maintainer: Leyla Azarang <lazarang@bcamath.org>
+Title: Net Survival Regression Model for Progressive Illness Death Data
+Version: 0.0.0.9000
+Authors@R: 
+    person("Quentin", "Marcou", , "quentin.marcou@univ-amu.fr", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-7074-2761"))
+Description: This package implements utilities to infer and inspect transition
+    probabilities in a progressive illness-death model in a net survival context
+    through binomial regression. Ref: Azarang L & Giorgi R. (2021)
+    <doi:10.1177/09622802211003608>
 Depends: R (>= 3.4.0), survival, foreach, doParallel
 Imports: graphics, utils, stats
-Description: Modeling of regression effects for transition probabilities in a 
-   progressive illness-death model. Azarang, Scheike, and de Una-Alvarez (2017) <doi:10.1002/sim.7245>.
-License: GPL-2
-LazyLoad: yes
-NeedsCompilation: yes
-Repository: CRAN
-Packaged: 2018-02-23 13:43:53 UTC; leyla
-Date/Publication: 2018-02-27 13:31:06 UTC
+License: GPL (>= 2)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
