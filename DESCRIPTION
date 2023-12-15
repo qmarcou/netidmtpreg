@@ -19,8 +19,11 @@ Depends:
     R (>= 3.4.0),
     survival
 Imports: 
+    data.table,
+    dplyr,
     graphics,
     stats,
+    tibble,
     utils
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
