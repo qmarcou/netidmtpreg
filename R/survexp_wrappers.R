@@ -16,7 +16,7 @@
 # patients_copy=copy(patients)
 # survexp(formula = c(20,20) ~ 1, data=patients_copy[1:2],
 #                  rmap = list(year=date_chir, age=age_at_dg, sex=sexe),method = 'individual.s', ratetable = test)
-# 
+#
 # survexp(formula = ~ 1, data=patients_copy[1],
 #                  rmap = list(year=date_chir, age=age_at_dg, sex=sexe),method = 'ederer',times=c(10,20), ratetable = test)
 # seems I can either compute several times for a single patient or one date for several patients at a time, not both
@@ -43,31 +43,31 @@
 #' @title Compute expected survival for one individual at several times
 #' @description A wrapper function calling survival::survexp to compute expected survival probablity of a single individual for one or several times.
 #' @param individual_df A DF or DT containing a single row with a single patient's covariates
-#' @param eval_times Times at which the expected survival should be evaluated. Times must be in days if using a ratetable with a Date component. 
-#' @param ratetable A ratetable object 
+#' @param eval_times Times at which the expected survival should be evaluated. Times must be in days if using a ratetable with a Date component.
+#' @param ratetable A ratetable object
 #' @param rmap An rmap argument as the one passed to survival::survexp. This argument will only be evaluated inside survexp
 #' @param fast Binary, if TRUE the function will omit some validity checks on the arguments. Should be used with caution.
 #'
-#' @return Returns a tibble with two columns: eval_times and surv the survival probability from the survexp object at those times. Upon failure of surv.exp because of missing data in the DF row, a vector of NA will be returned. 
+#' @return Returns a tibble with two columns: eval_times and surv the survival probability from the survexp object at those times. Upon failure of surv.exp because of missing data in the DF row, a vector of NA will be returned.
 #'
 #' @example indiv_survprob_pch(patients[1],eval_times = c(10,20,30),ratetable = slopop,rmap=list(year=date_chir, age=age_at_dg, sex=sexe))
 indiv_survprob_pch<-function(individual_df,eval_times,ratetable,rmap,fast=FALSE){
-  
+
   # # pch for piecewise constant hazard
   if(!fast){
-    
+
   if(!all(is.numeric(eval_times))) stop("Numeric values are expected for relative `eval_times`.")
   if(!all(eval_times>0)) stop("Relative `eval_times` must be greater than 0")
   # initially I wanted to allow the possibility to give absolute times and not only relative ones
   # however this needed to fiddle with the rmap object and find the correct date argument etc
   # in the end this is really not worth it
   # same goes for specifying a start time (s time)
-  
+
   if(nrow(individual_df)>1){
     stop("`individual_df` should contain a single row (1 subject and its covariates)")
   }
   }
-  
+
   # eval_times can be relative and must be expressed in days
   exp.surv<- tryCatch(
   eval(substitute(survival::survexp(formula = ~ 1, data=individual_df,
@@ -84,7 +84,7 @@ indiv_survprob_pch<-function(individual_df,eval_times,ratetable,rmap,fast=FALSE)
     }
   }
   )
-  return(tibble(eval_times=eval_times, surv=exp.surv))
+  return(tibble::tibble(eval_times=eval_times, surv=exp.surv))
 }
 
 
@@ -95,15 +95,15 @@ indiv_survprob_pch<-function(individual_df,eval_times,ratetable,rmap,fast=FALSE)
 #' @param ratetable A ratetable object. See ?survival::ratetable for details.
 #' @param rmap An rmap argument as the one passed to survival::survexp. This argument will only be evaluated inside survexp
 #'
-#' @return Returns a tidy tibble with 3 columns: the row name of the individual row (as given by the call of row.names() on the patientsDF), the evaluation time and the corresponding survival probability. 
+#' @return Returns a tidy tibble with 3 columns: the row name of the individual row (as given by the call of row.names() on the patientsDF), the evaluation time and the corresponding survival probability.
 #' @export
 #'
 #' @examples compute_survprob_pch(patients,eval_times = c(10,20,30),ratetable = slopop,rmap=list(year=date_chir, age=age_at_dg, sex=sexe))
 compute_survprob_pch<-function(patientsDF,eval_times,ratetable,rmap){
-  patientsDF<-as_tibble(patientsDF)
-  patientsDF<- patientsDF %>% 
+  patientsDF<-tibble::as_tibble(patientsDF)
+  patientsDF<- patientsDF %>%
     tibble::add_column(SQVVcCs1lD4R7tDVlOoVrowid=row.names(patientsDF),.name_repair = "check_unique") # Use a random col name, this will throw an error in case the column already exists
-  
+
   if(purrr::is_scalar_character(eval_times)){
     eval_times<-patientsDF[,eval_times] # this doesn't make sense at all! FIXME
     # I might have to evaluate it at that point then?
@@ -117,41 +117,41 @@ compute_survprob_pch<-function(patientsDF,eval_times,ratetable,rmap){
     else{
       old_cols<-colnames(patientsDF)
       for (t in eval_times) {
-        patientsDF<-patientsDF%>% add_column("SQVVcCs1lD4R7tDVlOoVeval_times{{t}}":=t,.name_repair = "universal")
+        patientsDF<-patientsDF%>% tibble::add_column("SQVVcCs1lD4R7tDVlOoVeval_times{{t}}":=t,.name_repair = "universal")
       }
-      patientsDF<- patientsDF %>% pivot_longer(-all_of(old_cols),names_to = NULL ,values_to = "SQVVcCs1lD4R7tDVlOoVeval_times")
+      patientsDF<- patientsDF %>% tidyr::pivot_longer(-all_of(old_cols),names_to = NULL ,values_to = "SQVVcCs1lD4R7tDVlOoVeval_times")
     }
- 
+
   }
   else if(is.list(eval_times)){
     is_num<-lapply(eval_times, is.numeric)
     lens<- lapply(eval_times, length)
     is_list <-lapply(eval_times, is.list)
-    
+
     if(all(is_num) & all(lens==1) & is.null(names(eval_times))){
       # the provided list is an unnamed list of length one numeric values
-      patientsDF<-dplyr::mutate(patientsDF,SQVVcCs1lD4R7tDVlOoVeval_times=list(eval_times)) 
+      patientsDF<-dplyr::mutate(patientsDF,SQVVcCs1lD4R7tDVlOoVeval_times=list(eval_times))
     }
     else if(all(names(eval_times %in% row.names(patientsDF)))){
       # TODO finish this list distribution
     }
-    patientsDF<-patientsDF %>% tidyr::unnest_longer(SQVVcCs1lD4R7tDVlOoVeval_times) 
+    patientsDF<-patientsDF %>% tidyr::unnest_longer(SQVVcCs1lD4R7tDVlOoVeval_times)
   }
   else{
     stop("`eval_times` must be a numeric vector, a list ,a string designating the dataframe column to be used.")
   }
   # TODO eventually add array of arrays
-  # TODO output a period object? (such that the output contains all the information)  
-  enquo_rmap<-enexpr(rmap)
-    
+  # TODO output a period object? (such that the output contains all the information)
+  enquo_rmap<-rlang::enexpr(rmap)
+
     exp.surv<-eval(substitute(survival::survexp(formula = SQVVcCs1lD4R7tDVlOoVeval_times ~ 1, data=patientsDF,
                     rmap = rmapsub ,method = 'individual.s', ratetable = ratetable,na.action=na.exclude),
   list(rmapsub=substitute(rmap))))
-    
-    final_df<- patientsDF %>% select(SQVVcCs1lD4R7tDVlOoVrowid,SQVVcCs1lD4R7tDVlOoVeval_times)%>%
-      mutate(expsurvs=exp.surv) %>%  
-    rename(row.name=SQVVcCs1lD4R7tDVlOoVrowid,eval_time=SQVVcCs1lD4R7tDVlOoVeval_times)
-  
+
+    final_df<- patientsDF %>% dplyr::select(SQVVcCs1lD4R7tDVlOoVrowid,SQVVcCs1lD4R7tDVlOoVeval_times)%>%
+      dplyr::mutate(expsurvs=exp.surv) %>%
+      dplyr::rename(row.name=SQVVcCs1lD4R7tDVlOoVrowid,eval_time=SQVVcCs1lD4R7tDVlOoVeval_times)
+
   return(final_df)
 }
 
@@ -161,30 +161,30 @@ dftoRatetable<-function(lambda,data=popmortality_df,qty=c('survival','mortality'
   # survival: conditionnal probability of survival for the time interval
   # yearlyHaz: yearly hazard rate (cumulated hazard over a year)
   # dailyHaz: daily hazard (cumulated hazard over a day)
-  
+
   rmap['calendar_year'] # check that e
-  
+
   # Create a ratetable containing dept information (this is incredibly and absurdly complicated)
   # adapted from: https://stackoverflow.com/questions/31064599/make-the-rate-table-for-relative-survival-analysis
   dept_ratetable_list = list()
   depts = levels(lifetable$dept)
   for (dep in depts){
     dept_ratetable_list = c(dept_ratetable_list,
-                            list(transrate(lifetable[sexe=="M" & dept==dep,.(agerev,annee,yearsurv=1-mua)]%>%pivot_wider(id_cols=agerev,names_from = annee, values_from=yearsurv)%>%select(!agerev)%>%as.matrix(),
-                                           lifetable[sexe=="F" & dept==dep,.(agerev,annee,yearsurv=1-mua)]%>%pivot_wider(id_cols=agerev,names_from = annee, values_from=yearsurv)%>%select(!agerev)%>%as.matrix(),
+                            list(transrate(lifetable[sexe=="M" & dept==dep,.(agerev,annee,yearsurv=1-mua)]%>%tidyr::pivot_wider(id_cols=agerev,names_from = annee, values_from=yearsurv)%>%dplyr::select(!agerev)%>%as.matrix(),
+                                           lifetable[sexe=="F" & dept==dep,.(agerev,annee,yearsurv=1-mua)]%>%tidyr::pivot_wider(id_cols=agerev,names_from = annee, values_from=yearsurv)%>%dplyr::select(!agerev)%>%as.matrix(),
                                            yearlim=c(lifetable[dept==dep,min(annee)],lifetable[,max(annee)]),
-                                           int.length=1)) 
+                                           int.length=1))
     )
   }
   # TODO rewrite this not using transrate since transrate limits to evenly spread year intervals
   names(dept_ratetable_list)<-depts
-  rt_lifetable = joinrate(dept_ratetable_list,dim.name = "dept")
-  
+  rt_lifetable = relsurv::joinrate(dept_ratetable_list,dim.name = "dept")
+
 }
 
 # Proper alternative format to ratetable:
 # DT with yearBirth added column instead of age, key on it and other covariates
-# apply dumn function: return 0 if less than date s, return fraction if 
+# apply dumn function: return 0 if less than date s, return fraction if
 
 # Prepare data => cf table 11.2 from handbook of survival analysis P.231
 # expand in dummy variables (cf Layla's code)
@@ -210,11 +210,11 @@ dftoRatetable<-function(lambda,data=popmortality_df,qty=c('survival','mortality'
 # This is briefly mentionned in Handbook of survival analysis p.228 and seems to be taken care of
 # by the 'id' field of geese/geeglm p.231
 
-# should I foresee issues in learning all parameters at the same time even when all parameters are time independent 
+# should I foresee issues in learning all parameters at the same time even when all parameters are time independent
 # (in terms of optimization)?
 # MUST HAVE A TIME DEPENDENT INTERCEPT
 
-# 
+#
 
 # Bootstrap: in theory censoring probability estimation should be bootstrapped too, but expected survival should be only computed once
 # this means the bootstrap ~~loop~~ or function should be on top level and apply to all transitions if we want to avoid
@@ -233,7 +233,7 @@ dftoRatetable<-function(lambda,data=popmortality_df,qty=c('survival','mortality'
 #' @description Filter and map a list/vector of time steps to a list/vector of event times.
 #'  This is useful for evaluating a piecewise constant function (e.g Kaplan-Meier survival, binomial regression)
 #'  but limit the number of redundant computation steps, by evaluating the function only at breakpoints.
-#' @param time_steps An array/vector of desired timesteps 
+#' @param time_steps An array/vector of desired timesteps
 #' @param event_times An array/vector of actual event-times or breakpoints
 #' @return An array of unique time points ordered in increasing order
 #' @export FALSE
@@ -248,7 +248,7 @@ dftoRatetable<-function(lambda,data=popmortality_df,qty=c('survival','mortality'
   time_steps <- time_steps[order(time_steps,decreasing=TRUE)]
   # sort event_times in increasing order
   event_times<-event_times[order(event_times)]
-  mapped_event_times <- c() 
+  mapped_event_times <- c()
   ind=0
   for(t in time_steps){
     # Find last event time (first backward) inferior or equal to t
@@ -274,23 +274,23 @@ dftoRatetable<-function(lambda,data=popmortality_df,qty=c('survival','mortality'
 
 
 # nessie function from the relsurv package, under GNU GPL
-nessie <- function (formula = formula(data), data = parent.frame(), ratetable = relsurv::slopop, 
-          times, rmap) 
+nessie <- function (formula = formula(data), data = parent.frame(), ratetable = relsurv::slopop,
+          times, rmap)
 {
   call <- match.call()
   if (!missing(rmap)) {
     rmap <- substitute(rmap)
   }
   na.action <- NA
-  rform <- rformulate(formula, data, ratetable, na.action, 
+  rform <- rformulate(formula, data, ratetable, na.action,
                       rmap)
   templab <- attr(rform$Terms, "term.labels")
-  if (!is.null(attr(rform$Terms, "specials")$ratetable)) 
+  if (!is.null(attr(rform$Terms, "specials")$ratetable))
     templab <- templab[-length(templab)]
   nameslist <- vector("list", length(templab))
   for (it in 1:length(nameslist)) {
     valuetab <- table(data[, match(templab[it], names(data))])
-    nameslist[[it]] <- paste(templab[it], names(valuetab), 
+    nameslist[[it]] <- paste(templab[it], names(valuetab),
                              sep = "")
   }
   names(nameslist) <- templab
@@ -300,7 +300,7 @@ nessie <- function (formula = formula(data), data = parent.frame(), ratetable = 
     data$Xs <- my.strata(rform$X[, , drop = F], nameslist = nameslist)
   }
   else data$Xs <- rep(1, nrow(data))
-  if (!missing(times)) 
+  if (!missing(times))
     tis <- times
   else tis <- unique(sort(floor(rform$Y/365.241)))
   tis <- unique(c(0, tis))
@@ -310,19 +310,19 @@ nessie <- function (formula = formula(data), data = parent.frame(), ratetable = 
   out$sp <- out$strata <- NULL
   for (kt in order(names(table(data$Xs)))) {
     inx <- which(data$Xs == names(out$n)[kt])
-    temp <- exp.prep(rform$R[inx, , drop = FALSE], rform$Y[inx], 
-                     rform$ratetable, rform$status[inx], times = tisd, 
+    temp <- exp.prep(rform$R[inx, , drop = FALSE], rform$Y[inx],
+                     rform$ratetable, rform$status[inx], times = tisd,
                      fast = FALSE)
     out$time <- c(out$time, tisd)
     out$sp <- c(out$sp, temp$sis)
     out$strata <- c(out$strata, length(tis))
-    temp <- exp.prep(rform$R[inx, , drop = FALSE], rform$Y[inx], 
-                     rform$ratetable, rform$status[inx], times = (seq(0, 
+    temp <- exp.prep(rform$R[inx, , drop = FALSE], rform$Y[inx],
+                     rform$ratetable, rform$status[inx], times = (seq(0,
                                                                       100, by = 0.5) * 365.241)[-1], fast = FALSE)
     out$povp <- c(out$povp, mean(temp$sit/365.241))
   }
   names(out$strata) <- names(out$n)[order(names(table(data$Xs)))]
-  if (p == 0) 
+  if (p == 0)
     out$strata <- NULL
   mata <- matrix(out$sp, ncol = length(tis), byrow = TRUE)
   mata <- data.frame(mata)

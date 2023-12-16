@@ -22,8 +22,11 @@ Imports:
     data.table,
     dplyr,
     graphics,
+    relsurv,
+    rlang,
     stats,
     tibble,
+    tidyr,
     utils
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
