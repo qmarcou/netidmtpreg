@@ -31,6 +31,28 @@
 #             class = "link-glm")
 # }
 
+
+#' @title Wraps the call to mod.glm.fit to handle convergence errors
+#' @description
+#' Tries to handle convergence and other issues upon calling the mod.glm.fit
+#' function. Some errors returned by mod.glm.fit are cast to warnings. In order
+#' to reduce crashes several values of `maxit` are tested if convergence issues
+#' are detected. NAs will be returned in case of crash/divergence or lack of
+#' informative observations.
+#'
+#' @param X
+#' @param response
+#' @param family
+#' @param weights
+#' @param maxit
+#' @param maxmaxit
+#' @param warning_str
+#' @param ...
+#'
+#' @return A glm object
+#' @export FALSE
+#'
+#' @examples
 mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()$maxit,maxmaxit=1000,warning_str="",...){
   result <-tryCatch(
     {
@@ -39,7 +61,7 @@ mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()
         mod.glm.fit2(X, response, family = family, weights = weights,start = rep(0,ncol(X)),control = glm.control(maxit = maxit))
       },
       warning=function(warn){
-        
+
         if(stringr::str_detect(warn$message,"no observations informative at iteration")){
           stop(paste0("Warning caught ",warning_str,": ",warn$message," returning NA"))
         }
@@ -48,7 +70,7 @@ mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()
         }
       }
       )
-      
+
     },
     error=function(err) {
       # Catch
@@ -89,6 +111,27 @@ mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()
   return(result)
 }
 
+
+#' @title Check input and output of mod.glm.fit
+#' @description
+#' Avoids calling the glm fitting function when there are no contrasted response
+#' values (all 0 or all 1). Ensures return of NA coefficient when the algorithm
+#' did not converge.
+#'
+#'
+#' @param X
+#' @param response
+#' @param family
+#' @param weights
+#' @param maxit
+#' @param maxmaxit
+#' @param warning_str
+#' @param ...
+#'
+#' @return A set of glm coefficients
+#' @export FALSE
+#'
+#' @examples
 mod.glm.fit.callingwrapper<-function(X,response,family,weights,maxit=glm.control()$maxit,maxmaxit=1000,warning_str="",...){
   if(any(response) & !all(response)){
     # There must be at least one event in the sample in order to learn smthg
@@ -98,15 +141,15 @@ mod.glm.fit.callingwrapper<-function(X,response,family,weights,maxit=glm.control
     if(!result$converged || result$boundary){
       result$coefficients=result$coefficients*NA #set coef to NA if the algorithm did not converge
     }
-    return(coefficients(result))  
+    return(coefficients(result))
   }
   else{
     # if no event, coefficients are meaningless and one should return NA
     warning("All provided responses are equal",warning_str,", cannot fit GLM, returning NA")
-    tmp<-rep(NA,dim(X)[[2L]]) 
+    tmp<-rep(NA,dim(X)[[2L]])
     names(tmp)<-dimnames(X)[[2L]]
     return(tmp)
-  }  
+  }
 }
 
 
@@ -566,6 +609,5 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
   }
 }
 
-prob_success_bootstrap<-function(n_events,len_dt,nboot){
-  return((1-((len_dt-n_events)/len_dt)^len_dt)^nboot)
-}
+# prob_success_bootstrap<-function(n_events,len_dt,nboot){
+#   return((1-((len_dt-n_events)/len_dt)^len_dt)^nboot)
