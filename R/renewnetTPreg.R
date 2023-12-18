@@ -461,9 +461,9 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           iboot <- sample(1:nrow(data1), replace=TRUE)
           iii <- rbind(iii, iboot)
           boot.data <- data1[iboot, ]
-          vv <- rellogit(t,boot.data)
+          vv <- offsetlogit(t,boot.data)
           family <- binomial(link = vv)
-          
+
           return(mod.glm.fit.callingwrapper(X[iboot, ,drop=FALSE], res[iboot], family = family, weights = wei[iboot],
                                           warning_str = paste0(" on bootstrap sample ",j," for transition 1->3, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
@@ -503,31 +503,31 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       L.t23 <- length(vec.t23)
       if(vec.t23[L.t23] >= M23) stop(" for the tansition '23' the effects can not be estimated for the given 't'(large 't' returns all responses equal to 1)")
       iii <- NULL
-      eta.list <- lapply( vec.t23, function(x){ 
+      eta.list <- lapply( vec.t23, function(x){
         jumptime <- x
         res <-(data2$Tt <= jumptime)
         delta_t <- ifelse(data2$Tt <= jumptime, data2$delta, 1)
-        hatG <- sapply(pmin(data2$Tt, jumptime), Shat.function23) 
+        hatG <- sapply(pmin(data2$Tt, jumptime), Shat.function23)
         wei <- delta_t/hatG
-        
+
         t<-x
         vv <- offsetlogit(t,data2)
         family <- binomial(link = vv)
-        
+
         eta<-mod.glm.fit.callingwrapper( X2, res, family = family, weights=wei,
                                        warning_str = paste0(" for transition 2->3, s=",s," t=", jumptime), maxmaxit = 1000)
         data2 <- data2
         formula1 <- formula
         X2 <- X2
-        
+
 	#Bootstrap
         r <- foreach(j=1:R, .combine = rbind, .export=c("iii","mod.glm.fit"),.errorhandling = "stop",.inorder = FALSE) %dopar% {
           iboot <- sample(1:nrow(data2), replace=TRUE)
           iii <- rbind(iii, iboot)
           boot.data <- data2[iboot, ]
-          vv <- rellogit(t,boot.data)
+          vv <- offsetlogit(t,boot.data)
           family <- binomial(link = vv)
-          
+
           return(mod.glm.fit.callingwrapper(X2[iboot, ,drop=FALSE], res[iboot], family = family, weights = wei[iboot],
                                           warning_str = paste0(" on bootstrap sample ",j," for transition 1->3, s=",s," t=", jumptime),
                                           maxmaxit = 1000))
