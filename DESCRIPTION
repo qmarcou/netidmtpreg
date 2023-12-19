@@ -20,7 +20,9 @@ Depends:
     survival
 Imports: 
     data.table,
+    doFuture,
     dplyr,
+    future,
     graphics,
     relsurv,
     rlang,

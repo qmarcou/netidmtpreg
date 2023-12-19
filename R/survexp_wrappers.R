@@ -236,7 +236,7 @@ dftoRatetable<-function(lambda,data=popmortality_df,qty=c('survival','mortality'
 #' @param time_steps An array/vector of desired timesteps
 #' @param event_times An array/vector of actual event-times or breakpoints
 #' @return An array of unique time points ordered in increasing order
-#' @export FALSE
+#' @export
 #'
 #' @examples
 #' .filter_times(c(1,2,4,5,6),c(1,3,5))
