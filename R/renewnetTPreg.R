@@ -159,7 +159,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
 # Dictionnary of used variables:
 	# X: the model matrix, created from the data given the formula, model.matrix expands factors in dummy variables
 	# comdata: "complete" data (no NA in any column), columns are ordered in a certain way, TODO stop creating dumb variables (ordata,comdata) and just edit the data variable
-	# data: initially the whole data, then comdata subsets (data1, data2)
+	# data: initially the whole data, then comdata subsets (data1, data2). Columns: Tt (\tifle(T),Zt(\tilde(Z)))
 	# 1/2 suffix: patients in state 1 or 2 at time s
 	# SfitXY: a Survfit object for the transition between state X and Y
 	# ShatXY: a dataframe containing survival estimate at different times (starting at time 0)
@@ -625,6 +625,112 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
     }
   }
 }
+
+estimate_censoring_dist <-
+  function(s, t, X, data_df, rhs_formula = NULL) {
+    # ==========================================================================
+    # Theory
+    # ==========================================================================
+    # Azarang et al, 2017 define two different censoring distributions G:
+    # 1->1, 1->3 and 1->2 transitions:
+    # $$ G^{(s)}_x(t) =  P(C>=t|C>=s,X=x) $$
+    # 2->2 and 2->3 transition:
+    # $$ G^{[s]}_x(t) =  P(C>=t|C>=s,Z<=s<T, X=x) $$
+    # However Z and T are assumed conditionnally independent of C given X
+    # (non-informative censoring), and the reverse is true. The two definitions
+    # above are inconsistent regarding this assumption
+    # Thus I'll use $ G^{(s)}_x(t) = G^{[s]}_x(t) =  P(C>=t|C>=s,X=x) $ for all
+    # transitions.
+
+    # ==========================================================================
+    # Implementation
+    # ==========================================================================
+    # Convert to data.table for easier row-based selection
+    if (!data.table::is.data.table(data_df)) {
+      data_df = data.table::as.data.table(data_df)
+    }
+    data_sub = data_df[!(Tt < s & delta == 0)]
+    # Create survival objects, carefully handle T<s censoring
+    # Tt<s & delta==1 (eq. to C<s) have been filtered out above
+    surv_resp = survival::Surv(max(data_sub$Tt - s, 0), data_sub$delta == 0)
+    # TODO allow the use of rhs_formula and other estimators
+    cens_fit = survival::survfit(surv_resp ~ +1)
+    # Use summary() to keep only times of censoring events
+    cens_fit = survival::summary(cens_fit, censored = FALSE)
+    # Add start time (t=s) censoring probability
+    cens_surv = tibble::tibble(time = cens_fit$time, surv = cens_fit$surv) %>%
+      tibble::add_row(time = 0.0, surv = 1.0)
+    return(cens_surv)
+  }
+
+#' Estimated survival at time t from a survfit like df.
+#'
+#' @param t Single numeric value
+#' @param survfit_data_df Should contain at least columns `surv` and `time`.
+#'
+#' @return A single numeric value
+#'
+#'
+#' @examples
+get_survival_at <- function(t, survfit_data_df) {
+  # Return the `surv` value for the row with lowest time greater than t.
+  surv_t  = survfit_data_df %>%
+    dplyr::filter(time >= t) %>%
+    dplyr::slice_min(order_by = time)
+  return(surv_t$surv[[1]])
+}
+
+fit_single_time_point_estimate <-
+  function(s, t, transition, X, data_df) {
+    # Compute censoring weights
+    cens_surv = estimate_censoring_dist(s, t, X, data_df)
+    ## Compute censoring weights accordingly
+    if (!data.table::is.data.table(data_df)) {
+      data_df = data.table::as.data.table(data_df)
+    }
+    # Update censoring indicators based on considered time t
+    censor_weights = NULL
+    censor_indicators = NULL
+    shorthand_fun = function(x) get_survival_at(x, cens_surv)
+    if (transition == "11") {
+      data_df[Zt > t, delta1 := 1]
+      censor_surv_t = sapply(pmin(data_df$Zt, t),
+                             shorthand_fun)
+      censor_indicators = data_df$delta1
+    }
+    else {
+      data_df[Tt > t, delta := 1]
+      censor_surv_t = sapply(pmin(data_df$Tt, t),
+                             shorthand_fun)
+      censor_indicators = data_df$delta
+    }
+    censor_weights = censor_indicators / censor_surv_t
+    # Create link function and family objects taking into account background mortality
+    logit_fun = if (transition %in% c('11', '12'))
+      rellogit(t, data_df)
+    else
+      offsetlogit(t, data_df)
+    family <- binomial(link = logit_fun)
+    # Fit the GLM
+    eta <-
+      mod.glm.fit.callingwrapper(
+        X,
+        res,
+        family = family,
+        weights = censor_weights,
+        warning_str = paste0(" for transition ", transition, ", s=", s, " t=", jumptime),
+        maxmaxit = 1000
+      )
+    return(eta)
+  }
+
+compute_single_time_bootstrap <-
+  function(s, t, transition, X, data_df) {
+    # Sample row ids with replacement
+    n = nrow(data_df)
+    boot_ids = sample(1:n, n, replace = TRUE)
+    return(fit_single_time_point_estimate(s, t, transition, X[boot_ids, ], data_df[boot_ids, ]))
+  }
 
 # prob_success_bootstrap<-function(n_events,len_dt,nboot){
 #   return((1-((len_dt-n_events)/len_dt)^len_dt)^nboot)

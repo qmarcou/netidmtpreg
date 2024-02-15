@@ -18,7 +18,8 @@ Depends:
     foreach,
     R (>= 3.4.0),
     survival
-Imports: 
+Imports:
+    assertr
     data.table,
     doFuture,
     dplyr,
