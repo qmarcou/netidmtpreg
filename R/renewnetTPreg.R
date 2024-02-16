@@ -305,8 +305,6 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
 
     # Shit part to compute expected survival
 
-    Survival=function(t,data_df) exp(-CumHaz(t,data_df))
-
     rellogit <- function(t,data_df) {
       SL <- eval(substitute(compute_survprob_pch(data_df,t-s,ratetable,rmap=rmapsubs),list(rmapsubs=rmapsub)))$expsurvs
       linkfun <- function(miu) log((miu/SL)/abs(1-(miu/SL)))
@@ -628,9 +626,9 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
 
 estimate_censoring_dist <-
   function(s, t, X, data_df, rhs_formula = NULL) {
-    # ==========================================================================
+    # =========================================================================
     # Theory
-    # ==========================================================================
+    # =========================================================================
     # Azarang et al, 2017 define two different censoring distributions G:
     # 1->1, 1->3 and 1->2 transitions:
     # $$ G^{(s)}_x(t) =  P(C>=t|C>=s,X=x) $$
@@ -642,9 +640,9 @@ estimate_censoring_dist <-
     # Thus I'll use $ G^{(s)}_x(t) = G^{[s]}_x(t) =  P(C>=t|C>=s,X=x) $ for all
     # transitions.
 
-    # ==========================================================================
+    # =========================================================================
     # Implementation
-    # ==========================================================================
+    # =========================================================================
     # Convert to data.table for easier row-based selection
     if (!data.table::is.data.table(data_df)) {
       data_df = data.table::as.data.table(data_df)
@@ -684,10 +682,11 @@ fit_single_time_point_estimate <-
   function(s, t, transition, X, data_df) {
     # Compute censoring weights
     cens_surv = estimate_censoring_dist(s, t, X, data_df)
-    ## Compute censoring weights accordingly
+
     if (!data.table::is.data.table(data_df)) {
       data_df = data.table::as.data.table(data_df)
     }
+    
     # Update censoring indicators based on considered time t
     censor_weights = NULL
     censor_indicators = NULL
@@ -706,10 +705,10 @@ fit_single_time_point_estimate <-
     }
     censor_weights = censor_indicators / censor_surv_t
     # Create link function and family objects taking into account background mortality
-    logit_fun = if (transition %in% c('11', '12'))
-      rellogit(t, data_df)
+    logit_fun = if (transition %in% c('11', '12', '22'))
+      function() rellogit(s, t, data_df, ratetable, rmapsubs)
     else
-      offsetlogit(t, data_df)
+      function() offsetlogit(s, t, data_df, ratetable, rmapsubs)
     family <- binomial(link = logit_fun)
     # Fit the GLM
     eta <-
@@ -724,13 +723,79 @@ fit_single_time_point_estimate <-
     return(eta)
   }
 
-compute_single_time_bootstrap <-
+compute_single_time_bootstrap_sample <-
   function(s, t, transition, X, data_df) {
     # Sample row ids with replacement
     n = nrow(data_df)
     boot_ids = sample(1:n, n, replace = TRUE)
-    return(fit_single_time_point_estimate(s, t, transition, X[boot_ids, ], data_df[boot_ids, ]))
+    return(fit_single_time_point_estimate(s, t, transition, X[boot_ids,], data_df[boot_ids,]))
   }
 
-# prob_success_bootstrap<-function(n_events,len_dt,nboot){
-#   return((1-((len_dt-n_events)/len_dt)^len_dt)^nboot)
+compute_single_time_bootsraps <-
+  function(n_boot, s, t, transition, X, data_df) {
+    boot_res <-
+      future.apply::future_replicate(n = n_boot, expr = compute_single_time_bootstrap_sample(s, t, transition, X, data_df))
+    return(boot_res)
+  }
+
+summarize_single_time_bootstraps <- function(boot_res) {
+  return(quantile(boot_res, probs = c(0.025, .975)))
+}
+
+rellogit <- function(s, t, data_df, ratetable, rmapsubs) {
+  SL <-
+    eval(substitute(
+      compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsubs),
+      list(rmapsubs = rmapsub)
+    ))$expsurvs
+  linkfun <- function(miu)
+    log((miu / SL) / abs(1 - (miu / SL)))
+  linkinv <- function(et)
+    SL * exp(et) / (1 + exp(et))
+  mu.eta <- function(et) {
+    SL * exp(et) / (1 + exp(et)) ^ 2
+  }
+  valideta <- function(et)
+    TRUE
+  link <- "log((miu/SL)/(1-(miu/SL)))"
+  structure(
+    list(
+      linkfun = linkfun,
+      linkinv = linkinv,
+      mu.eta = mu.eta,
+      valideta = valideta,
+      name = link
+    ),
+    class = "link-glm"
+  )
+}
+
+# an offset survival logit link function for 13 and 23 transitions
+offsetlogit <- function(s, t, data_df, ratetable, rmapsubs) {
+  SL <-
+    eval(substitute(
+      compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsubs),
+      list(rmapsubs = rmapsub)
+    ))$expsurvs
+  dp <- 1 - SL #death probability
+  linkfun <- function(miu)
+    log((miu - dp) / (1 - (miu - dp)))
+  linkinv <- function(et)
+    (exp(et) * SL + dp) / (1 + exp(et))
+  mu.eta <- function(et) {
+    ((2 * SL - 1) * exp(et)) / ((1 + exp(et)) ^ 2)
+  }
+  valideta <- function(et)
+    TRUE
+  link <- "log((miu-dp)/(1-(miu-dp)))"
+  structure(
+    list(
+      linkfun = linkfun,
+      linkinv = linkinv,
+      mu.eta = mu.eta,
+      valideta = valideta,
+      name = link
+    ),
+    class = "link-glm"
+  )
+}
