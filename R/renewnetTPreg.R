@@ -153,7 +153,7 @@ mod.glm.fit.callingwrapper<-function(X,response,family,weights,maxit=glm.control
 
 
 renewnetTPreg <-
-function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age'), s = 0, t = NULL,R = 199, by = NULL, trans, ncores = future::availableCores())
+function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age'), s = 0, t = NULL,R = 199, by = NULL, trans)
 {
 # Dictionnary of used variables:
 	# X: the model matrix, created from the data given the formula, model.matrix expands factors in dummy variables
@@ -275,10 +275,6 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         return(Shatx)
       }
     }
-
-    # Initialize future workers
-    future::plan(future::multisession,
-                 workers=ncores)
 
     co <- vector("list", 4)
     names(co) <- c("co11", "co12", "co13", "co23")
