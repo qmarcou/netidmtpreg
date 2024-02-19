@@ -53,7 +53,7 @@
 #'
 #' @examples
 mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()$maxit,maxmaxit=1000,warning_str="",...){
-  result <-tryCatch(
+  result <-tryCatchLog::tryCatchLog(
     {
       #Try
       withCallingHandlers({
@@ -153,7 +153,7 @@ mod.glm.fit.callingwrapper<-function(X,response,family,weights,maxit=glm.control
 
 
 renewnetTPreg <-
-function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age'), s = 0, t = NULL,R = 199, by = NULL, trans, ncores = future::availableWorkers())
+function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age'), s = 0, t = NULL,R = 199, by = NULL, trans, ncores = future::availableCores())
 {
 # Dictionnary of used variables:
 	# X: the model matrix, created from the data given the formula, model.matrix expands factors in dummy variables
@@ -364,7 +364,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           ))
       # Compute bootstrap
       boot.eta <-
-        lapply(vec.t11, function(x)
+        future.apply::future_lapply(vec.t11, function(x){
           compute_single_time_bootsraps(
             s,
             t = x,
@@ -373,9 +373,9 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             data_df = data1,
             ratetable = ratetable,
             rmapsub = rmapsub
-          ))
+          )})
 
-      eta_list <- lapply(eta.list, function(x)
+      eta_list <- future.apply::future_lapply(eta.list, function(x)
         x[["eta"]])
       sd_list <- lapply(eta.list, function(x)
         x[["sd"]])
@@ -730,6 +730,8 @@ fit_single_time_point_estimate <-
         rmapsub = rmapsub
       )
     }
+    # TODO check whether the binomial variance should be adjusted too 
+    custom_family = binomial(link = custom_link)
 
     # Extract binary response
     y <- if(transition == "11"){
@@ -747,7 +749,7 @@ fit_single_time_point_estimate <-
       mod.glm.fit.callingwrapper(
         X,
         y,
-        family = family,
+        family = custom_family,
         weights = censor_weights,
         warning_str = paste0(" for transition ", transition, ", s=", s, " t=", t),
         maxmaxit = 1000
