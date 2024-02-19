@@ -348,7 +348,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
 
       # Compute point estimate
       eta.list <-
-        lapply(vec.t11, function(x)
+        future.apply::future_lapply(vec.t11, function(x)
           fit_single_time_point_estimate(
             s,
             t = x,
@@ -360,7 +360,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           ))
       # Compute bootstrap
       boot.eta <-
-        future.apply::future_lapply(vec.t11, function(x){
+        lapply(vec.t11, function(x){ # use single worker apply here as multiworker is used for bootstrapping
           compute_single_time_bootsraps(
             s,
             t = x,
