@@ -155,7 +155,6 @@ mod.glm.fit.callingwrapper<-function(X,response,family,weights,maxit=glm.control
 renewnetTPreg <-
 function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age'), s = 0, t = NULL,R = 199, by = NULL, trans, ncores = future::availableWorkers())
 {
-
 # Dictionnary of used variables:
 	# X: the model matrix, created from the data given the formula, model.matrix expands factors in dummy variables
 	# comdata: "complete" data (no NA in any column), columns are ordered in a certain way, TODO stop creating dumb variables (ordata,comdata) and just edit the data variable
@@ -305,104 +304,109 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
 
     # Shit part to compute expected survival
 
-    rellogit <- function(t,data_df) {
-      SL <- eval(substitute(compute_survprob_pch(data_df,t-s,ratetable,rmap=rmapsubs),list(rmapsubs=rmapsub)))$expsurvs
-      linkfun <- function(miu) log((miu/SL)/abs(1-(miu/SL)))
-      linkinv <- function(et)  SL*exp(et)/(1+exp(et))
-      mu.eta <- function(et) {SL*exp(et)/(1+exp(et))^2  }
-      valideta <- function(et) TRUE
-      link <- "log((miu/SL)/(1-(miu/SL)))"
-      structure(list(linkfun = linkfun, linkinv = linkinv,
-                     mu.eta = mu.eta, valideta = valideta,
-                     name = link),
-                class = "link-glm")
-    }
-
-    # an offset survival logit link function for 13 and 23 transitions
-    offsetlogit <-function(t,data_df) {
-      SL <- eval(substitute(compute_survprob_pch(data_df,t-s,ratetable,rmap= rmapsubs),list(rmapsubs=rmapsub)))$expsurvs
-      dp <- 1- SL #death probability
-      linkfun <- function(miu) log((miu-dp)/(1-(miu-dp)))
-      linkinv <- function(et)  (exp(et)*SL+dp)/(1+exp(et))
-      mu.eta <- function(et) {((2*SL-1)*exp(et))/((1+exp(et))^2) }
-      valideta <- function(et) TRUE
-      link <- "log((miu-dp)/(1-(miu-dp)))"
-      structure(list(linkfun = linkfun, linkinv = linkinv,
-                     mu.eta = mu.eta, valideta = valideta,
-                     name = link),
-                class = "link-glm")
-    }
+    # rellogit <- function(t,data_df) {
+    #   SL <- eval(substitute(compute_survprob_pch(data_df,t-s,ratetable,rmap=rmapsubs),list(rmapsubs=rmapsub)))$expsurvs
+    #   linkfun <- function(miu) log((miu/SL)/abs(1-(miu/SL)))
+    #   linkinv <- function(et)  SL*exp(et)/(1+exp(et))
+    #   mu.eta <- function(et) {SL*exp(et)/(1+exp(et))^2  }
+    #   valideta <- function(et) TRUE
+    #   link <- "log((miu/SL)/(1-(miu/SL)))"
+    #   structure(list(linkfun = linkfun, linkinv = linkinv,
+    #                  mu.eta = mu.eta, valideta = valideta,
+    #                  name = link),
+    #             class = "link-glm")
+    # }
+    #
+    # # an offset survival logit link function for 13 and 23 transitions
+    # offsetlogit <-function(t,data_df) {
+    #   SL <- eval(substitute(compute_survprob_pch(data_df,t-s,ratetable,rmap= rmapsubs),list(rmapsubs=rmapsub)))$expsurvs
+    #   dp <- 1- SL #death probability
+    #   linkfun <- function(miu) log((miu-dp)/(1-(miu-dp)))
+    #   linkinv <- function(et)  (exp(et)*SL+dp)/(1+exp(et))
+    #   mu.eta <- function(et) {((2*SL-1)*exp(et))/((1+exp(et))^2) }
+    #   valideta <- function(et) TRUE
+    #   link <- "log((miu-dp)/(1-(miu-dp)))"
+    #   structure(list(linkfun = linkfun, linkinv = linkinv,
+    #                  mu.eta = mu.eta, valideta = valideta,
+    #                  name = link),
+    #             class = "link-glm")
+    # }
 
 # Look at the 1->1 transition
-    if(trans == "11" || trans == "all" ){
+    if (trans == "11" || trans == "all") {
+      print("Enter 11")
       vec.t11 <- data1$Zt
       M11 <- max(vec.t11)
       vec.t11 <- vec.t11[order(vec.t11[vec.t11 > s])]# dafuq? #FIXME
       # vec.t11 times are already guaranteed to be >s, since data1 contains only obs for Zt >s
-      vec.t11<- vec.t11[vec.t11 <= t]
-      vec.t11<- vec.t11[seq(1, length(vec.t11), by)]
+      vec.t11 <- vec.t11[vec.t11 <= t]
+      vec.t11 <- vec.t11[seq(1, length(vec.t11), by)]
       vec.t11 <- c(vec.t11, t)
       vec.t11 <- unique(vec.t11)
       L.t11 <- length(vec.t11)
-      if(vec.t11[L.t11] >= M11) # FIXME why not just if(t>M11)
-        stop("for the tansition '11' the effects can not be estimated for the given 't'(large 't' returns all responses equal to 0) ")
-      eta.list <- lapply( vec.t11, function(x){
-        jumptime <- x
-        res <- (data1$Zt > jumptime) # logical: has patient transitioned before time 'jumptime'
-        delta1_t <- ifelse(data1$Zt <= jumptime , data1$delta1, 1) # update right censoring indicator
-        hatG1 <- sapply(pmin(data1$Zt, jumptime), Shat.function1)
-       # QUESTION i don't understand this: hatG1 should be the probability of not being censored CONDITIONNED ON not having been censored before s
-	# here it uses Shat1, which is the censoring distribution starting from time 0, and considering death and recurrence as censoring events
-	# in theory there should'nt be any diff between Shat and Shat1 except for precision loss in the estimation of Shat 1 due to extra censoring events
-        wei <- delta1_t/hatG1
-        X <- X #FIXME nice and useful line
-        t <- x
-        vv <- rellogit(t,data1)
-        family <- binomial(link = vv)
-        eta<-mod.glm.fit.callingwrapper( X, res, family = family, weights = wei,
-                                       warning_str = paste0(" for transition 1->1, s=",s," t=", jumptime), maxmaxit = 1000)
+      if (vec.t11[L.t11] >= M11)
+        # FIXME why not just if(t>M11)
+        stop(
+          "for the tansition '11' the effects can not be estimated for the given 't'(large 't' returns all responses equal to 0) "
+        )
 
-        data1 <- data1 # FIXME again, wtf?
+      # Compute point estimate
+      eta.list <-
+        lapply(vec.t11, function(x)
+          fit_single_time_point_estimate(
+            s,
+            t = x,
+            transition = "11",
+            X = X,
+            data_df = data1,
+            ratetable = ratetable,
+            rmapsub = rmapsub
+          ))
+      # Compute bootstrap
+      boot.eta <-
+        lapply(vec.t11, function(x)
+          compute_single_time_bootsraps(
+            s,
+            t = x,
+            transition = "11",
+            X = X,
+            data_df = data1,
+            ratetable = ratetable,
+            rmapsub = rmapsub
+          ))
 
-	# Bootstrap
-	# TODO add .inorder=FALSE to speedup (slighlty) bootstrap
-        r <-
-          foreach(
-            j = 1:R,
-            .combine = rbind,
-            .errorhandling = "stop",
-            .inorder = FALSE
-          ) %dofuture% {
-
-          X <- X
-	  # Resample data with replacement
-          iboot <- sample(1:nrow(data1), replace=TRUE)
-          boot.data <- data1[iboot, ] # FIXME unused variable?
-          vv <- rellogit(t,boot.data)
-          family <- binomial(link = vv)
-
-          return(mod.glm.fit.callingwrapper(X[iboot, ,drop=FALSE], res[iboot], family = family, weights = wei[iboot],
-                                          warning_str = paste0(" on bootstrap sample ",j," for transition 1->1, s=",s," t=", jumptime),
-                                          maxmaxit = 1000))
-
-        }
-
-        boot.eta <- r
-        boot.sd <- apply(boot.eta, 2, sd, na.rm = FALSE)
-	# QUESTION why not returning the 95%CI ? Asymptotic normality of the estimator guaranteed?
-        return(list(eta=bind_rows(eta), sd=bind_rows(boot.sd)))
-      })
-      eta_list<-lapply(eta.list,function(x) x[["eta"]])
-      sd_list<-lapply(eta.list,function(x) x[["sd"]])
+      eta_list <- lapply(eta.list, function(x)
+        x[["eta"]])
+      sd_list <- lapply(eta.list, function(x)
+        x[["sd"]])
       coef <- do.call("bind_rows", eta_list)
       sd <- do.call("bind_rows", sd_list)
 
-      CO <- list(transition = "11",formula=formula, time = vec.t11, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
-      if(trans == "all"){
+      CO <-
+        list(
+          transition = "11",
+          formula = formula,
+          time = vec.t11,
+          coefficients = coef,
+          SD = sd,
+          LWL = coef - 1.96 * sd,
+          UPL = coef + 1.96 * sd,
+          p.value = 2 * pnorm(-abs(as.matrix(coef / sd)))
+        )
+      if (trans == "all") {
         co$co11 = CO
       }
       else {
-        co <- list("co" = CO, call = match.call(),formula=formula,transition = trans, s = s, t = t, n.misobs = n.misobs)
+        co <-
+          list(
+            "co" = CO,
+            call = match.call(),
+            formula = formula,
+            transition = trans,
+            s = s,
+            t = t,
+            n.misobs = n.misobs
+          )
         class(co) = "TPreg"
         return(co)
       }
@@ -650,11 +654,11 @@ estimate_censoring_dist <-
     data_sub = data_df[!(Tt < s & delta == 0)]
     # Create survival objects, carefully handle T<s censoring
     # Tt<s & delta==1 (eq. to C<s) have been filtered out above
-    surv_resp = survival::Surv(max(data_sub$Tt - s, 0), data_sub$delta == 0)
+    surv_resp = survival::Surv(pmax(data_sub$Tt - s, 0), data_sub$delta == 0)
     # TODO allow the use of rhs_formula and other estimators
     cens_fit = survival::survfit(surv_resp ~ +1)
     # Use summary() to keep only times of censoring events
-    cens_fit = survival::summary(cens_fit, censored = FALSE)
+    cens_fit = summary(cens_fit, censored = FALSE)
     # Add start time (t=s) censoring probability
     cens_surv = tibble::tibble(time = cens_fit$time, surv = cens_fit$surv) %>%
       tibble::add_row(time = 0.0, surv = 1.0)
@@ -679,99 +683,131 @@ get_survival_at <- function(t, survfit_data_df) {
 }
 
 fit_single_time_point_estimate <-
-  function(s, t, transition, X, data_df) {
+  function(s, t, transition, res, X, data_df, ratetable, rmapsub) {
     # Compute censoring weights
     cens_surv = estimate_censoring_dist(s, t, X, data_df)
 
     if (!data.table::is.data.table(data_df)) {
       data_df = data.table::as.data.table(data_df)
     }
-    
+
     # Update censoring indicators based on considered time t
     censor_weights = NULL
     censor_indicators = NULL
     shorthand_fun = function(x) get_survival_at(x, cens_surv)
     if (transition == "11") {
+      # FIXME implement data filtering based on state at time s
       data_df[Zt > t, delta1 := 1]
       censor_surv_t = sapply(pmin(data_df$Zt, t),
                              shorthand_fun)
       censor_indicators = data_df$delta1
     }
     else {
+      # FIXME implement data filtering based on state at time s
       data_df[Tt > t, delta := 1]
       censor_surv_t = sapply(pmin(data_df$Tt, t),
                              shorthand_fun)
       censor_indicators = data_df$delta
     }
     censor_weights = censor_indicators / censor_surv_t
+
     # Create link function and family objects taking into account background mortality
-    logit_fun = if (transition %in% c('11', '12', '22'))
-      function() rellogit(s, t, data_df, ratetable, rmapsubs)
-    else
-      function() offsetlogit(s, t, data_df, ratetable, rmapsubs)
-    family <- binomial(link = logit_fun)
+    custom_link = if (transition %in% c('11', '12', '22')) {
+      rellogit(
+        s = s,
+        t = t,
+        data_df = data_df,
+        ratetable = ratetable,
+        rmapsub = rmapsub
+      )
+    }
+    else {
+      offsetlogit(
+        s = s,
+        t = t,
+        data_df = data_df,
+        ratetable = ratetable,
+        rmapsub = rmapsub
+      )
+    }
+
+    # Extract binary response
+    y <- if(transition == "11"){
+      # TODO Check that censoring is correctly applied here
+      # I feel like because the event is an absence of one censoring time is not
+      # correctly applied
+      data_df$Zt > t
+    }
+    else {
+      stop("Transitions other than 11 not implemented")
+    }
+
     # Fit the GLM
     eta <-
       mod.glm.fit.callingwrapper(
         X,
-        res,
+        y,
         family = family,
         weights = censor_weights,
-        warning_str = paste0(" for transition ", transition, ", s=", s, " t=", jumptime),
+        warning_str = paste0(" for transition ", transition, ", s=", s, " t=", t),
         maxmaxit = 1000
       )
     return(eta)
   }
 
 compute_single_time_bootstrap_sample <-
-  function(s, t, transition, X, data_df) {
+  function(s, t, transition, X, data_df, ratetable, rmapsub) {
     # Sample row ids with replacement
     n = nrow(data_df)
     boot_ids = sample(1:n, n, replace = TRUE)
-    return(fit_single_time_point_estimate(s, t, transition, X[boot_ids,], data_df[boot_ids,]))
+    return(fit_single_time_point_estimate(s, t, transition, X[boot_ids,], data_df[boot_ids,], ratetable, rmapsub))
   }
 
 compute_single_time_bootsraps <-
-  function(n_boot, s, t, transition, X, data_df) {
+  function(n_boot, s, t, transition, X, data_df, ratetable, rmapsub) {
     boot_res <-
-      future.apply::future_replicate(n = n_boot, expr = compute_single_time_bootstrap_sample(s, t, transition, X, data_df))
+      future.apply::future_replicate(n = n_boot, expr = compute_single_time_bootstrap_sample(s, t, transition, X, data_df, ratetable, rmapsub))
     return(boot_res)
   }
 
 summarize_single_time_bootstraps <- function(boot_res) {
-  return(quantile(boot_res, probs = c(0.025, .975)))
+  #return(quantile(boot_res, probs = c(0.025, .975)))
+  return(apply(boot_res, 2, sd, na.rm = FALSE))
 }
 
-rellogit <- function(s, t, data_df, ratetable, rmapsubs) {
+rellogit <- function(s, t, data_df, ratetable, rmapsub) {
   SL <-
     eval(substitute(
       compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsubs),
       list(rmapsubs = rmapsub)
     ))$expsurvs
-  linkfun <- function(miu)
-    log((miu / SL) / abs(1 - (miu / SL)))
-  linkinv <- function(et)
-    SL * exp(et) / (1 + exp(et))
-  mu.eta <- function(et) {
-    SL * exp(et) / (1 + exp(et)) ^ 2
+  linkfun <- function(mu){
+    log((mu / SL) / abs(1 - (mu / SL)))
   }
-  valideta <- function(et)
+  linkinv <- function(eta){
+    SL * exp(eta) / (1 + exp(eta))
+  }
+  mu.eta <- function(eta) {
+    SL * exp(eta) / (1 + exp(eta)) ^ 2
+  }
+  valideta <- function(eta){
     TRUE
-  link <- "log((miu/SL)/(1-(miu/SL)))"
-  structure(
+  }
+  name <- "Relative Logit"
+  return(structure(
     list(
       linkfun = linkfun,
       linkinv = linkinv,
       mu.eta = mu.eta,
       valideta = valideta,
-      name = link
+      name = name
     ),
     class = "link-glm"
-  )
+  ))
 }
 
 # an offset survival logit link function for 13 and 23 transitions
-offsetlogit <- function(s, t, data_df, ratetable, rmapsubs) {
+offsetlogit <- function(s, t, data_df, ratetable, rmapsub) {
   SL <-
     eval(substitute(
       compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsubs),
