@@ -359,10 +359,12 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             rmapsub = rmapsub
           ))
       # Compute bootstrap
-      boot.eta <-
-        lapply(vec.t11, function(x){ # use single worker apply here as multiworker is used for bootstrapping
+      boot.eta <- 
+      # use single worker apply here as multiworker is used for bootstrapping
+        lapply(vec.t11, function(x){ 
           compute_single_time_bootsraps(
-            s,
+            n_boot = 100, # FIXME allow tuning of n_boot
+            s = s,
             t = x,
             transition = "11",
             X = X,
