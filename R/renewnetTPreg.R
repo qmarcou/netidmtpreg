@@ -52,61 +52,93 @@
 #' @return A glm object
 #'
 #' @examples
-mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()$maxit,maxmaxit=1000,warning_str="",...){
-  result <-tryCatchLog::tryCatchLog(
-    {
-      #Try
+mod.glm.fit.errorwrapper <-
+  function(X,
+           response,
+           family,
+           weights,
+           maxit = glm.control()$maxit,
+           maxmaxit = 1000,
+           warning_str = "",
+           ...) {
+    result <- tryCatchLog::tryCatchLog({
+      # Try
       withCallingHandlers({
-        mod.glm.fit2(X, response, family = family, weights = weights,start = rep(0,ncol(X)),control = glm.control(maxit = maxit))
+        mod.glm.fit2(
+          X,
+          response,
+          family = family,
+          weights = weights,
+          start = rep(0, ncol(X)),
+          control = glm.control(maxit = maxit)
+        )
       },
-      warning=function(warn){
-
-        if(stringr::str_detect(warn$message,"no observations informative at iteration")){
-          stop(paste0("Warning caught ",warning_str,": ",warn$message," returning NA"))
+      warning = function(warn) {
+        if (stringr::str_detect(warn$message, "no observations informative at iteration")) {
+          stop(paste0(
+            "Warning caught ",
+            warning_str,
+            ": ",
+            warn$message,
+            " returning NA"
+          ))
+        } else {
+          warning(paste0(warning_str, warn$message))
         }
-        else{
-          warning(paste0(warning_str,warn$message))
-        }
-      }
-      )
-
+      })
     },
-    error=function(err) {
+    error = function(err) {
       # Catch
-      if(err$message =="inner loop 1; cannot correct step size" ||
-         err$message =="inner loop 2; cannot correct step size"){
-        if(maxit*10<=maxmaxit){
+      if (err$message == "inner loop 1; cannot correct step size" ||
+          err$message == "inner loop 2; cannot correct step size") {
+        if (maxit * 10 <= maxmaxit) {
           # recursively call the wrapper with a greater maxit
-          return(mod.glm.fit.errorwrapper(X=X, response=response, family = family, weights = weights,
-                                          maxit = maxit*10, maxmaxit = maxmaxit,warning_str = warning_str))
+          return(
+            mod.glm.fit.errorwrapper(
+              X = X,
+              response = response,
+              family = family,
+              weights = weights,
+              maxit = maxit * 10,
+              maxmaxit = maxmaxit,
+              warning_str = warning_str
+            )
+          )
+        } else {
+          warning(
+            paste0(
+              "Step size correction issue with maxmaxit reached: ",
+              warning_str,
+              "returning NA as result"
+            )
+          )
+          tmp <- rep(NA, dim(X)[[2L]])
+          names(tmp) <- dimnames(X)[[2L]]
+          return(list(coefficients = tmp, converged = FALSE))
         }
-        else{
-          warning(paste0("Step size correction issue with maxmaxit reached: ",warning_str,"returning NA as result"))
-          tmp<-rep(NA,dim(X)[[2L]])
-          names(tmp)<-dimnames(X)[[2L]]
-          return(list(coefficients=tmp,converged = FALSE))
-        }
-      }
-      else if(stringr::str_detect(err$message,"no observations informative at iteration")){
-        tmp<-rep(NA,dim(X)[[2L]])
-        names(tmp)<-dimnames(X)[[2L]]
-        return(list(coefficients=tmp,converged = FALSE))
-      }
-      else if(stringr::str_detect(err$message,"NA/NaN/Inf in 'y'")){
+      } else if (stringr::str_detect(err$message, "no observations informative at iteration")) {
+        tmp <- rep(NA, dim(X)[[2L]])
+        names(tmp) <- dimnames(X)[[2L]]
+        return(list(coefficients = tmp, converged = FALSE))
+      } else if (stringr::str_detect(err$message, "NA/NaN/Inf in 'y'")) {
         # Handle an error that i do not fully understand, this seems to be linked to the divergence of the algorithm
         # with derivatives regarding parameters exploding. I do not know whether this could be linked to Layla's
         # modification to the glm.fit code
-        warning("mod.glm.fit crashed with error \"",err$message,"\"",warning_str,", returning NA")
-        tmp<-rep(NA,dim(X)[[2L]])
-        names(tmp)<-dimnames(X)[[2L]]
-        return(list(coefficients=tmp,converged = FALSE))
-      }
-      else{
-        message(paste0("Exception caught upon calling modl.glm.fit",warning_str))
+        warning(
+          "mod.glm.fit crashed with error \"",
+          err$message,
+          "\"",
+          warning_str,
+          ", returning NA"
+        )
+        tmp <- rep(NA, dim(X)[[2L]])
+        names(tmp) <- dimnames(X)[[2L]]
+        return(list(coefficients = tmp, converged = FALSE))
+      } else {
+        message(paste0("Exception caught upon calling modl.glm.fit", warning_str))
         stop(err$message)
       }
-    }
-  )
+    })
   return(result)
 }
 
@@ -130,22 +162,39 @@ mod.glm.fit.errorwrapper<-function(X,response,family,weights,maxit=glm.control()
 #' @return A set of glm coefficients
 #'
 #' @examples
-mod.glm.fit.callingwrapper<-function(X,response,family,weights,maxit=glm.control()$maxit,maxmaxit=1000,warning_str="",...){
-  if(any(response) & !all(response)){
+mod.glm.fit.callingwrapper <-
+  function(X,
+           response,
+           family,
+           weights,
+           maxit = glm.control()$maxit,
+           maxmaxit = 1000,
+           warning_str = "",
+           ...) {
+    if (any(response) & !all(response)) {
     # There must be at least one event in the sample in order to learn smthg
-    result<-mod.glm.fit.errorwrapper(X=X, response=response, family = family, weights = weights,
-                                     maxit = maxit, maxmaxit = maxmaxit,warning_str = warning_str)
-    #print(result$converged)
-    if(!result$converged || result$boundary){
-      result$coefficients=result$coefficients*NA #set coef to NA if the algorithm did not converge
+      result <- mod.glm.fit.errorwrapper(
+        X = X,
+        response = response,
+        family = family,
+        weights = weights,
+        maxit = maxit,
+        maxmaxit = maxmaxit,
+        warning_str = warning_str
+      )
+      # print(result$converged)
+      if (!result$converged || result$boundary) {
+        result$coefficients <-
+          result$coefficients * NA # set coef to NA if the algorithm did not converge
     }
     return(coefficients(result))
-  }
-  else{
+    } else {
     # if no event, coefficients are meaningless and one should return NA
-    warning("All provided responses are equal",warning_str,", cannot fit GLM, returning NA")
-    tmp<-rep(NA,dim(X)[[2L]])
-    names(tmp)<-dimnames(X)[[2L]]
+      warning("All provided responses are equal",
+              warning_str,
+              ", cannot fit GLM, returning NA")
+      tmp <- rep(NA, dim(X)[[2L]])
+      names(tmp) <- dimnames(X)[[2L]]
     return(tmp)
   }
 }
