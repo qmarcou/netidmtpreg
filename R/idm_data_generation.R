@@ -20,11 +20,9 @@ generate_poisson_time_to_event <-
            n_timesteps,
            recurring = FALSE) {
     # Check arguments
-    assertthat::assert_that(assertthat::is.count(n_individuals),
-                            assertthat::is.count(n_timesteps),
-                            msg = "Expected integer value for n_individuals and n_timesteps.")
-    assertthat::assert_that(assertthat::is.scalar(lambda), lambda > 0,
-                            msg = "Poisson rate lambda must be a real positive scalar.")
+    assert_count(n_individuals, "n_individuals", invalid_argument)
+    assert_count(n_timesteps, "n_timesteps", invalid_argument)
+    multi_assert(lambda, "lambda", invalid_argument, c(assert_scalar,assert_positive))
 
     # Draw random observations with fixed time steps in a single vector
     counts <-
@@ -49,7 +47,7 @@ generate_poisson_time_to_event <-
       events_times <- sapply(X = events_times, min)
     }
     else{
-      stop("Not implemented")
+      not_implemented("Recurring events handling is not implemented yet.")
       if (any(counts > 1)) {
         message(
           "Several events occured in a single time step and are not identifiyable, consider setting a finer grained time step."
