@@ -17,11 +17,18 @@ invalid_argument <- function(arg, must, not = NULL) {
   }
 
   rlang::abort(
-    "invalid_argument_error",
+    class = "invalid_argument_error",
     message = msg,
     arg = arg,
     must = must,
     not = not
+  )
+}
+
+not_implemented <- function(msg){
+  rlang::abort(
+    message = msg,
+    class = "not_implemented_error"
   )
 }
 
