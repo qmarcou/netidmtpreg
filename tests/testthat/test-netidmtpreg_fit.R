@@ -35,3 +35,12 @@ testthat::test_that("Test calling wrapper for mod.glm.fit.", {
   testthat::expect_true(all(rlang::are_na(beta)))
 
 })
+
+testthat::test_that("IDM model Fitting", {
+
+  # Test single dimensionnal model.matrix (e.g intercept only formula ~ 1)
+  # Fixed by feb8378ef0a17d1aca30f2fda55ec57c77711e64
+  # TODO
+  testthat::skip('not implemented')
+
+})
