@@ -25,6 +25,7 @@ Imports:
     doFuture,
     dplyr,
     future,
+    glue,
     graphics,
     relsurv,
     rlang,
