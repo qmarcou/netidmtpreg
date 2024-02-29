@@ -69,7 +69,7 @@ mod.glm.fit.errorwrapper <-
           response,
           family = family,
           weights = weights,
-          start = rep(0, ncol(X)),
+          start = rep.int(0, times = ncol(X)),
           control = glm.control(maxit = maxit)
         )
       },
@@ -112,12 +112,12 @@ mod.glm.fit.errorwrapper <-
               "returning NA as result"
             )
           )
-          tmp <- rep(NA, dim(X)[[2L]])
+          tmp <- rep.int(NA, times = dim(X)[[2L]])
           names(tmp) <- dimnames(X)[[2L]]
           return(list(coefficients = tmp, converged = FALSE))
         }
       } else if (stringr::str_detect(err$message, "no observations informative at iteration")) {
-        tmp <- rep(NA, dim(X)[[2L]])
+        tmp <- rep.int(NA, times = dim(X)[[2L]])
         names(tmp) <- dimnames(X)[[2L]]
         return(list(coefficients = tmp, converged = FALSE))
       } else if (stringr::str_detect(err$message, "NA/NaN/Inf in 'y'")) {
@@ -131,7 +131,7 @@ mod.glm.fit.errorwrapper <-
           warning_str,
           ", returning NA"
         )
-        tmp <- rep(NA, dim(X)[[2L]])
+        tmp <- rep.int(NA, times = dim(X)[[2L]])
         names(tmp) <- dimnames(X)[[2L]]
         return(list(coefficients = tmp, converged = FALSE))
       } else {
@@ -139,8 +139,8 @@ mod.glm.fit.errorwrapper <-
         stop(err$message)
       }
     })
-  return(result)
-}
+    return(result)
+  }
 
 
 #' @title Check input and output of mod.glm.fit
@@ -150,7 +150,7 @@ mod.glm.fit.errorwrapper <-
 #' did not converge.
 #'
 #'
-#' @param X
+#' @param X array, must have at least 2 dimensions
 #' @param response
 #' @param family
 #' @param weights
@@ -193,7 +193,7 @@ mod.glm.fit.callingwrapper <-
       warning("All provided responses are equal",
               warning_str,
               ", cannot fit GLM, returning NA")
-      tmp <- rep(NA, dim(X)[[2L]])
+      tmp <- rep.int(NA, times = dim(X)[[2L]])
       names(tmp) <- dimnames(X)[[2L]]
     return(tmp)
   }
@@ -794,8 +794,8 @@ fit_single_time_point_estimate <-
     # Fit the GLM
     eta <-
       mod.glm.fit.callingwrapper(
-        X,
-        y,
+        X = X,
+        response = y,
         family = custom_family,
         weights = censor_weights,
         warning_str = paste0(" for transition ", transition, ", s=", s, " t=", t),
@@ -809,13 +809,25 @@ compute_single_time_bootstrap_sample <-
     # Sample row ids with replacement
     n = nrow(data_df)
     boot_ids = sample(1:n, n, replace = TRUE)
-    return(fit_single_time_point_estimate(s, t, transition, X[boot_ids,], data_df[boot_ids,], ratetable, rmapsub))
+    return(
+      fit_single_time_point_estimate(
+        s = s,
+        t = t ,
+        transition = transition,
+        # BUGFIX keep X dimensionality in case there a single term in the
+        # formula
+        X = X[boot_ids, , drop = FALSE],
+        data_df = data_df[boot_ids, ],
+        ratetable = ratetable,
+        rmapsub = rmapsub
+      )
+    )
   }
 
 compute_single_time_bootsraps <-
   function(n_boot, s, t, transition, X, data_df, ratetable, rmapsub) {
     boot_res <-
-      future.apply::future_replicate(n = n_boot, expr = compute_single_time_bootstrap_sample(s, t, transition, X, data_df, ratetable, rmapsub))
+      future.apply::future_replicate(n = n_boot, expr = compute_single_time_bootstrap_sample(s = s, t = t, transition = transition, X = X, data_df = data_df, ratetable = ratetable, rmapsub = rmapsub), simplify = FALSE)
     return(boot_res)
   }
 
@@ -855,7 +867,7 @@ rellogit <- function(s, t, data_df, ratetable, rmapsub) {
   ))
 }
 
-# an offset survival logit link function for 13 and 23 transitions
+# an offset survival logit link function closure for 13 and 23 transitions
 offsetlogit <- function(s, t, data_df, ratetable, rmapsub) {
   SL <-
     eval(substitute(
