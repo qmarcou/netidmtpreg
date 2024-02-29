@@ -172,7 +172,7 @@ mod.glm.fit.callingwrapper <-
            warning_str = "",
            ...) {
     if (any(response) & !all(response)) {
-    # There must be at least one event in the sample in order to learn smthg
+      # There must be at least one event in the sample in order to learn smthg
       result <- mod.glm.fit.errorwrapper(
         X = X,
         response = response,
@@ -186,18 +186,18 @@ mod.glm.fit.callingwrapper <-
       if (!result$converged || result$boundary) {
         result$coefficients <-
           result$coefficients * NA # set coef to NA if the algorithm did not converge
-    }
-    return(coefficients(result))
+      }
+      return(coefficients(result))
     } else {
-    # if no event, coefficients are meaningless and one should return NA
+      # if no event, coefficients are meaningless and one should return NA
       warning("All provided responses are equal",
               warning_str,
               ", cannot fit GLM, returning NA")
       tmp <- rep.int(NA, times = dim(X)[[2L]])
       names(tmp) <- dimnames(X)[[2L]]
-    return(tmp)
+      return(tmp)
+    }
   }
-}
 
 
 
@@ -408,9 +408,9 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             rmapsub = rmapsub
           ))
       # Compute bootstrap
-      boot.eta <- 
+      boot.eta <-
       # use single worker apply here as multiworker is used for bootstrapping
-        lapply(vec.t11, function(x){ 
+        lapply(vec.t11, function(x){
           compute_single_time_bootsraps(
             n_boot = 100, # FIXME allow tuning of n_boot
             s = s,
@@ -730,7 +730,7 @@ get_survival_at <- function(t, survfit_data_df) {
 }
 
 fit_single_time_point_estimate <-
-  function(s, t, transition, res, X, data_df, ratetable, rmapsub) {
+  function(s, t, transition, X, data_df, ratetable, rmapsub) {
     # Compute censoring weights
     cens_surv = estimate_censoring_dist(s, t, X, data_df)
 
@@ -777,7 +777,7 @@ fit_single_time_point_estimate <-
         rmapsub = rmapsub
       )
     }
-    # TODO check whether the binomial variance should be adjusted too 
+    # TODO check whether the binomial variance should be adjusted too
     custom_family = binomial(link = custom_link)
 
     # Extract binary response
