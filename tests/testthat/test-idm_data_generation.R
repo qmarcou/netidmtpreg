@@ -1,5 +1,5 @@
 devtools::load_all()
-test_that("Homogeneous Poisson count process generation works", {
+testthat::test_that("Homogeneous Poisson count process generation works", {
   n_ind = 1000
   lambda = .25
   n_steps = 10
@@ -83,4 +83,21 @@ test_that("Homogeneous Poisson count process generation works", {
     ),
     class = "invalid_argument_error"
   )
+})
+
+testthat::test_that("Test uncensored simplified exponential IDM data generation", {
+  n_ind <- 1000
+  lambda_illness <- 1
+  lambda_death <- .5
+  idm_syth_data <- NULL
+  testthat::expect_no_error(
+    idm_syth_data <- generate_uncensored_ind_exp_idm_data(
+      n_individuals = n_ind,
+      lambda_illness = lambda_illness,
+      lambda_death = lambda_death
+    )
+  )
+  testthat::expect_s3_class(idm_syth_data,"data.frame")
+  testthat::expect_length(idm_syth_data, 5) # id, Zt, delta1, Tt, delta
+  testthat::expect_equal(nrow(idm_syth_data), n_ind)
 })

@@ -1,8 +1,8 @@
 #' Generate synthetic time to event data from a homogeneous Poisson process.
 #'
 #' Note that this is not a efficient way to model time homogeneous non recurring
-#'  events that may be better captured by a continuous time exponential
-#'  distribution.
+#' events that may be better captured by a continuous time exponential
+#' distribution from \code{\link{generate_exponential_time_to_event}}.
 #'
 #' @param n_individuals integer, Number of individuals to simulate
 #' @param lambda float > 0, Rate of the Poisson point process
@@ -10,7 +10,7 @@
 #' @param recurring logical, whether event is recurring or fully absorbing.
 #'
 #' @return If recurring=FALSE a vector of first time to event, if recurring=TRUE
-#' a list of event times of length n_individuals.
+#'   a list of event times of length n_individuals.
 #' @export
 #'
 #' @examples
@@ -22,7 +22,10 @@ generate_poisson_time_to_event <-
     # Check arguments
     assert_count(n_individuals, "n_individuals", invalid_argument)
     assert_count(n_timesteps, "n_timesteps", invalid_argument)
-    multi_assert(lambda, "lambda", invalid_argument, c(assert_scalar,assert_positive))
+    multi_assert(lambda,
+                 "lambda",
+                 invalid_argument,
+                 c(assert_scalar, assert_positive))
 
     # Draw random observations with fixed time steps in a single vector
     counts <-
@@ -55,4 +58,75 @@ generate_poisson_time_to_event <-
       }
     }
     return(events_times)
+  }
+
+#'Generate time to events from an exponential distribution
+#'
+#'This is a simple wrapper around the stats::rexp function, without added value
+#'beyond consistent argument checking and format with other generating functions
+#'from the package.
+#'@param n_individuals integer, Number of individuals to simulate
+#'@param lambda float > 0, Rate of the underlying Poisson point process
+#'
+#'
+#'@return Atomic vector of time to (first) event.
+#'@export
+#'
+#' @examples
+generate_exponential_time_to_event <-
+  function(n_individuals,
+           lambda) {
+    # TODO generalize to allow the use of a formula for different rates in the
+    # pop (first step towards population mortality modeling)
+    # Check arguments
+    assert_count(n_individuals, "n_individuals", invalid_argument)
+    multi_assert(lambda,
+                 "lambda",
+                 invalid_argument,
+                 c(assert_scalar, assert_positive))
+    # Generate and return random exponential time to events
+    return(rexp(n = n_individuals, rate = lambda))
+  }
+
+#' Generate uncensored independent exponential illness-death data.
+#'
+#' Mostly for testing purposes. Illness and death times are assumed independent,
+#' in particular the death rate is assumed equal in healthy and illness states.
+#' This simplification creates data that are not really following an
+#' Illness-Death model but a simpler semi competitive model, where death
+#' prevents observation of illness times.
+#'
+#' @param n_individuals integer, Number of individuals to simulate
+#' @param lambda_illness float > 0, Rate of the underlying Poisson point process
+#'   to transition from healthy to illness
+#' @param lambda_death float > 0, Rate of death, either from healthy or illness
+#'   state.
+#'
+#' @return a tibble of iddata
+#' @export
+#'
+#' @examples
+generate_uncensored_ind_exp_idm_data <-
+  function(n_individuals,
+           lambda_illness,
+           lambda_death) {
+
+    # Defer parameter checking to inner generating functions
+    illness_times <-
+      generate_exponential_time_to_event(n_individuals = n_individuals, lambda = lambda_illness)
+    death_times <-
+      generate_exponential_time_to_event(n_individuals = n_individuals, lambda = lambda_death)
+    healthy_sojourn_time <- pmin(illness_times, death_times)
+
+    # FIXME Use the more generic `iddata` preparation function
+    id_data <-
+      tibble::tibble(
+        id = seq.int(from = 1, to = n_individuals, by = 1),
+        Zt = healthy_sojourn_time,
+        delta1 = 1,
+        # Uncensored
+        Tt = death_times,
+        delta = 1 # Uncensored
+      )
+    return(id_data)
   }
