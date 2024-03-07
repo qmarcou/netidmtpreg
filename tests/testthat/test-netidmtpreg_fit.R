@@ -36,11 +36,63 @@ testthat::test_that("Test calling wrapper for mod.glm.fit.", {
 
 })
 
-testthat::test_that("IDM model Fitting", {
-
+testthat::test_that("IDM survival model Fitting", {
   # Test single dimensionnal model.matrix (e.g intercept only formula ~ 1)
   # Fixed by feb8378ef0a17d1aca30f2fda55ec57c77711e64
-  # TODO
+  # TODO test crude mortality estimates correctness
   testthat::skip('not implemented')
+  # Crude mortality binomial regression
+  synth_idm_data <- generate_uncensored_ind_exp_idm_data(
+    n_individuals = 1e4,
+    lambda_illness = 1.0,
+    lambda_death = 0.1
+  )
+  for (transition in c('all','11','12','22','13','23')) {
+    renewnetTPreg(~1, synth_idm_data, ratetable = NULL, s=0, t=10, by=1, trans = transition)
+  }
+})
 
+testthat::test_that("IDM Net survival model Fitting", {
+  # Check that the model runs even with nonsense population information
+  n_ind = 1e4
+  synth_idm_data <- generate_uncensored_ind_exp_idm_data(
+    n_individuals = n_ind,
+    lambda_illness = 1.0,
+    lambda_death = 0.1
+  )
+  # Generate random age and sex labels
+  synth_idm_data <-
+    synth_idm_data %>% tibble::add_column(
+      sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
+      age = runif(n = n_ind, min = 50, max = 80)
+    )
+  # Generate random start of follow up dates
+  # FIXME a date before 1940 or after 2012 (limits of uspop ratetable) is
+  # extremely unlikely with these parameters but not impossible.
+  synth_idm_data <-
+    synth_idm_data %>% tibble::add_column(start_date = as.Date.numeric(
+      x = rnorm(n = n_ind, mean = 0, sd = 1e2),
+      origin = as.Date("15/06/1976", "%d/%m/%Y")
+    ))
+  for (transition in c('11')) {
+    renewnetTPreg(
+      formula = ~ 1,
+      synth_idm_data,
+      # Use a standard ratetable
+      ratetable = survival::survexp.us,
+      rmap = list(
+        age = age,
+        sex = sex,
+        year = start_date
+      ),
+      time_dep_popvars = list('age', 'year'),
+      s = 0,
+      t = 1.5,
+      by = .5,
+      trans = transition,
+      link = "logit",
+      R = 5 # Number of bootstraps
+    )
+  }
+  testthat::skip('not implemented')
 })
