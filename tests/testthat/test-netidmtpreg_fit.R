@@ -96,3 +96,23 @@ testthat::test_that("IDM Net survival model Fitting", {
   }
   testthat::skip('not implemented')
 })
+
+testthat::test_that("Check censoring dist fitting and prediction", {
+  # Check that censoring fitting and prediction works without censoring
+  n_ind = 1e4
+  synth_idm_data <- generate_uncensored_ind_exp_idm_data(
+    n_individuals = n_ind,
+    lambda_illness = 1.0,
+    lambda_death = 0.1
+  )
+  cens_fit <-
+    estimate_censoring_dist(
+      s = 0,
+      t = 1.5,
+      X = NULL,
+      data_df = synth_idm_data
+    )
+  get_survival_at(1.5, cens_fit) # get censoring estimate at boundary
+  testthat::skip('not implemented')
+  # TODO Add actual censoring
+})
