@@ -112,7 +112,7 @@ testthat::test_that("Check censoring dist fitting and prediction", {
       X = NULL,
       data_df = synth_idm_data
     )
-  get_survival_at(1.5, cens_fit) # get censoring estimate at boundary
+  assertthat::are_equal(get_survival_at(1.5, cens_fit), 1.0) # get censoring estimate at boundary
   testthat::skip('not implemented')
   # TODO Add actual censoring
 })

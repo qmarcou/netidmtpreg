@@ -706,9 +706,10 @@ estimate_censoring_dist <-
     cens_fit = survival::survfit(surv_resp ~ +1)
     # Use summary() to keep only times of censoring events
     cens_fit = summary(cens_fit, censored = FALSE)
-    # Add start time (t=s) censoring probability
+    # Add start time (time = s) censoring probability
     cens_surv = tibble::tibble(time = cens_fit$time, surv = cens_fit$surv) %>%
       tibble::add_row(time = 0.0, surv = 1.0)
+
     return(cens_surv)
   }
 
@@ -722,10 +723,10 @@ estimate_censoring_dist <-
 #'
 #' @examples
 get_survival_at <- function(t, survfit_data_df) {
-  # Return the `surv` value for the row with lowest time greater than t.
+  # Return the `surv` value for the row with greatest time lower than t.
   surv_t  = survfit_data_df %>%
-    dplyr::filter(time >= t) %>%
-    dplyr::slice_min(order_by = time)
+    dplyr::filter(time <= t) %>%
+    dplyr::slice_max(order_by = time)
   return(surv_t$surv[[1]])
 }
 
