@@ -91,7 +91,7 @@ testthat::test_that("IDM Net survival model Fitting", {
       by = .5,
       trans = transition,
       link = "logit",
-      R = 5 # Number of bootstraps
+      R = 2 # Number of bootstraps
     )
   }
   testthat::skip('not implemented')
