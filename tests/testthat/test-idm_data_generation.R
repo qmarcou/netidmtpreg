@@ -89,15 +89,19 @@ testthat::test_that("Test uncensored simplified exponential IDM data generation"
   n_ind <- 1000
   lambda_illness <- 1
   lambda_death <- .5
-  idm_syth_data <- NULL
+  idm_synth_data <- NULL
   testthat::expect_no_error(
-    idm_syth_data <- generate_uncensored_ind_exp_idm_data(
+    idm_synth_data <- generate_uncensored_ind_exp_idm_data(
       n_individuals = n_ind,
       lambda_illness = lambda_illness,
       lambda_death = lambda_death
     )
   )
-  testthat::expect_s3_class(idm_syth_data,"data.frame")
-  testthat::expect_length(idm_syth_data, 5) # id, Zt, delta1, Tt, delta
-  testthat::expect_equal(nrow(idm_syth_data), n_ind)
+  testthat::expect_s3_class(idm_synth_data, "data.frame")
+  testthat::expect_length(idm_synth_data, 5) # id, Zt, delta1, Tt, delta
+  assertr::verify(idm_synth_data,
+                  assertr::has_only_names(c('id', 'Zt', 'delta1', 'Tt', 'delta')))
+  # TODO use `is.iddata()` function
+  testthat::expect_equal(nrow(idm_synth_data), n_ind)
+  assertr::assert(idm_synth_data, assertr::in_set(TRUE, allow.na = FALSE), delta, delta1)
 })
