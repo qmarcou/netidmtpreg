@@ -412,7 +412,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       # use single worker apply here as multiworker is used for bootstrapping
         lapply(vec.t11, function(x){
           compute_single_time_bootsraps(
-            n_boot = 100, # FIXME allow tuning of n_boot
+            n_boot = R,
             s = s,
             t = x,
             transition = "11",
