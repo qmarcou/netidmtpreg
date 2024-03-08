@@ -138,7 +138,7 @@ compute_survprob_pch<-function(patientsDF,eval_times,ratetable,rmap){
     patientsDF<-patientsDF %>% tidyr::unnest_longer(SQVVcCs1lD4R7tDVlOoVeval_times)
   }
   else{
-    stop("`eval_times` must be a numeric vector, a list ,a string designating the dataframe column to be used.")
+    stop("`eval_times` must be a numeric vector, a numeric list, or a string designating the dataframe column to be used.")
   }
   # TODO eventually add array of arrays
   # TODO output a period object? (such that the output contains all the information)

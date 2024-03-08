@@ -1,3 +1,4 @@
+devtools::load_all()
 testthat::test_that("Test convergence error wrapper for mod.glm.fit.", {
   # TODO
   testthat::skip('not implemented')
@@ -88,13 +89,53 @@ testthat::test_that("IDM Net survival model Fitting", {
       time_dep_popvars = list('age', 'year'),
       s = 0,
       t = 1.5,
-      by = .5,
+      by = n_ind/2,
       trans = transition,
       link = "logit",
       R = 2 # Number of bootstraps
     )
   }
   testthat::skip('not implemented')
+})
+
+testthat::test_that("Test single time point estimation" , {
+  # TODO alleviate code duplication?
+  n_ind = 1e4
+  synth_idm_data <- generate_uncensored_ind_exp_idm_data(
+    n_individuals = n_ind,
+    lambda_illness = 1.0,
+    lambda_death = 0.1
+  )
+  # Generate random age and sex labels
+  synth_idm_data <-
+    synth_idm_data %>% tibble::add_column(
+      sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
+      age = runif(n = n_ind, min = 50, max = 80)
+    )
+  # Generate random start of follow up dates
+  # FIXME a date before 1940 or after 2012 (limits of uspop ratetable) is
+  # extremely unlikely with these parameters but not impossible.
+  synth_idm_data <-
+    synth_idm_data %>% tibble::add_column(year = as.Date.numeric(
+      x = rnorm(n = n_ind, mean = 0, sd = 1e2),
+      origin = as.Date("15/06/1976", "%d/%m/%Y")
+    ))
+  fit_single_time_point_estimate(
+    s = 0,
+    # No time correction needed in rmap for s=0
+    t = 1.5,
+    transition = "11",
+    X = array(1, dim = c(n_ind, 1)),
+    # Intercept only model.matrix
+    data_df = synth_idm_data,
+    ratetable = survival::survexp.us,
+    # FIXME there must be a more elegant way than hardcoding df column names
+    #rmapsub = list(year = start_date)
+    rmapsub = list(
+      sex = "male",
+      year = 1970,
+      age = 65 * 365 # age in days
+    ))
 })
 
 testthat::test_that("Check censoring dist fitting and prediction", {
