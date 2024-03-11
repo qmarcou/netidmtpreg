@@ -89,71 +89,112 @@ indiv_survprob_pch<-function(individual_df,eval_times,ratetable,rmap,fast=FALSE)
 
 
 #' @title Apply individual surv prob computation to DF
-#' @description This function is a wrapper around `indiv_survprob_pch`. It calls the latter function on every row of the DF in order to compute the expected survival probability for each individual row at each provided `eval_times`. The point of this is to call survexp only once per patient and compute the survival probablity at all patime points for each patient, thus avoiding redundant computation.
-#' @param patientsDF a DF/DT/tibble containing the data needed to compute individual expected survival probability
-#' @param eval_times The times at which survival must be evaluated. Times must be in days if using a ratetable with a Date component. Provided times can be passed as single numeric value or vector of numeric values or as unamed list of numeric values if common for all individuals. Otherwise the name of the column containing the list,vector or single value evaluation point can be passed as character string or as variable name.
+#' @description This function is a wrapper around `indiv_survprob_pch`. It calls
+#'   the latter function on every row of the DF in order to compute the expected
+#'   survival probability for each individual row at each provided `eval_times`.
+#'   The point of this is to call survexp only once per patient and compute the
+#'   survival probablity at all patime points for each patient, thus avoiding
+#'   redundant computation.
+#' @param patientsDF a DF/DT/tibble containing the data needed to compute
+#'   individual expected survival probability
+#' @param eval_times The times at which survival must be evaluated. Times must
+#'   be in days if using a ratetable with a Date component. Provided times can
+#'   be passed as single numeric value or vector of numeric values or as unamed
+#'   list of numeric values if common for all individuals. Otherwise the name of
+#'   the column containing the list,vector or single value evaluation point can
+#'   be passed as character string or as variable name.
 #' @param ratetable A ratetable object. See ?survival::ratetable for details.
-#' @param rmap An rmap argument as the one passed to survival::survexp. This argument will only be evaluated inside survexp
+#' @param rmap An rmap argument as the one passed to survival::survexp. This
+#'   argument will only be evaluated inside survexp
 #'
-#' @return Returns a tidy tibble with 3 columns: the row name of the individual row (as given by the call of row.names() on the patientsDF), the evaluation time and the corresponding survival probability.
+#' @return Returns a tidy tibble with 3 columns: the row name of the individual
+#'   row (as given by the call of row.names() on the patientsDF), the evaluation
+#'   time and the corresponding survival probability.
 #' @export
 #'
 #' @examples compute_survprob_pch(patients,eval_times = c(10,20,30),ratetable = slopop,rmap=list(year=date_chir, age=age_at_dg, sex=sexe))
-compute_survprob_pch<-function(patientsDF,eval_times,ratetable,rmap){
-  patientsDF<-tibble::as_tibble(patientsDF)
-  patientsDF<- patientsDF %>%
-    tibble::add_column(SQVVcCs1lD4R7tDVlOoVrowid=row.names(patientsDF),.name_repair = "check_unique") # Use a random col name, this will throw an error in case the column already exists
+compute_survprob_pch <-
+  function(patientsDF, eval_times, ratetable, rmap) {
+    patientsDF <- tibble::as_tibble(patientsDF)
+    patientsDF <- patientsDF %>%
+      tibble::add_column(SQVVcCs1lD4R7tDVlOoVrowid = row.names(patientsDF),
+                         .name_repair = "check_unique") # Use a random col name, this will throw an error in case the column already exists
 
-  if(purrr::is_scalar_character(eval_times)){
-    eval_times<-patientsDF[,eval_times] # this doesn't make sense at all! FIXME
-    # I might have to evaluate it at that point then?
-  }
-  else if(is.numeric(eval_times)){
-    # Make sure it's not a date # FIXME
-    # list of list of times or list of vectors, need to have an id column for this?
-    if(length(eval_times)==1) {
-      patientsDF<-dplyr::mutate(patientsDF,SQVVcCs1lD4R7tDVlOoVeval_times=eval_times)
+    if (purrr::is_scalar_character(eval_times)) {
+      eval_times <-
+        patientsDF[, eval_times] # this doesn't make sense at all! FIXME
+      # I might have to evaluate it at that point then?
+    }
+    else if (is.numeric(eval_times)) {
+      # Make sure it's not a date # FIXME
+      # list of list of times or list of vectors, need to have an id column for this?
+      if (length(eval_times) == 1) {
+        patientsDF <-
+          dplyr::mutate(patientsDF, SQVVcCs1lD4R7tDVlOoVeval_times = eval_times)
+      }
+      else{
+        old_cols <- colnames(patientsDF)
+        for (t in eval_times) {
+          patientsDF <-
+            patientsDF %>% tibble::add_column("SQVVcCs1lD4R7tDVlOoVeval_times{{t}}" :=
+                                                t,
+                                              .name_repair = "universal")
+        }
+        patientsDF <-
+          patientsDF %>% tidyr::pivot_longer(-all_of(old_cols),
+                                             names_to = NULL ,
+                                             values_to = "SQVVcCs1lD4R7tDVlOoVeval_times")
+      }
+
+    }
+    else if (is.list(eval_times)) {
+      is_num <- lapply(eval_times, is.numeric)
+      lens <- lapply(eval_times, length)
+      is_list <- lapply(eval_times, is.list)
+
+      if (all(is_num) & all(lens == 1) & is.null(names(eval_times))) {
+        # the provided list is an unnamed list of length one numeric values
+        patientsDF <-
+          dplyr::mutate(patientsDF,
+                        SQVVcCs1lD4R7tDVlOoVeval_times = list(eval_times))
+      }
+      else if (all(names(eval_times %in% row.names(patientsDF)))) {
+        # TODO finish this list distribution
+      }
+      patientsDF <-
+        patientsDF %>% tidyr::unnest_longer(SQVVcCs1lD4R7tDVlOoVeval_times)
     }
     else{
-      old_cols<-colnames(patientsDF)
-      for (t in eval_times) {
-        patientsDF<-patientsDF%>% tibble::add_column("SQVVcCs1lD4R7tDVlOoVeval_times{{t}}":=t,.name_repair = "universal")
-      }
-      patientsDF<- patientsDF %>% tidyr::pivot_longer(-all_of(old_cols),names_to = NULL ,values_to = "SQVVcCs1lD4R7tDVlOoVeval_times")
+      stop(
+        "`eval_times` must be a numeric vector, a numeric list, or a string designating the dataframe column to be used."
+      )
     }
 
+
+    # TODO eventually add array of arrays
+    # TODO output a period object? (such that the output contains all the
+    # information)
+
+    exp.surv <-
+      eval(substitute(
+        survival::survexp(
+          formula = SQVVcCs1lD4R7tDVlOoVeval_times ~ 1,
+          data = patientsDF,
+          rmap = rmapsub ,
+          method = 'individual.s',
+          ratetable = ratetable,
+          na.action = na.exclude
+        ),
+        list(rmapsub = substitute(rmap))
+      ))
+
+    final_df <-
+      patientsDF %>% dplyr::select(SQVVcCs1lD4R7tDVlOoVrowid, SQVVcCs1lD4R7tDVlOoVeval_times) %>%
+      dplyr::mutate(expsurvs = exp.surv) %>%
+      dplyr::rename(row.name = SQVVcCs1lD4R7tDVlOoVrowid, eval_time = SQVVcCs1lD4R7tDVlOoVeval_times)
+
+    return(final_df)
   }
-  else if(is.list(eval_times)){
-    is_num<-lapply(eval_times, is.numeric)
-    lens<- lapply(eval_times, length)
-    is_list <-lapply(eval_times, is.list)
-
-    if(all(is_num) & all(lens==1) & is.null(names(eval_times))){
-      # the provided list is an unnamed list of length one numeric values
-      patientsDF<-dplyr::mutate(patientsDF,SQVVcCs1lD4R7tDVlOoVeval_times=list(eval_times))
-    }
-    else if(all(names(eval_times %in% row.names(patientsDF)))){
-      # TODO finish this list distribution
-    }
-    patientsDF<-patientsDF %>% tidyr::unnest_longer(SQVVcCs1lD4R7tDVlOoVeval_times)
-  }
-  else{
-    stop("`eval_times` must be a numeric vector, a numeric list, or a string designating the dataframe column to be used.")
-  }
-  # TODO eventually add array of arrays
-  # TODO output a period object? (such that the output contains all the information)
-  enquo_rmap<-rlang::enexpr(rmap)
-
-    exp.surv<-eval(substitute(survival::survexp(formula = SQVVcCs1lD4R7tDVlOoVeval_times ~ 1, data=patientsDF,
-                    rmap = rmapsub ,method = 'individual.s', ratetable = ratetable,na.action=na.exclude),
-  list(rmapsub=substitute(rmap))))
-
-    final_df<- patientsDF %>% dplyr::select(SQVVcCs1lD4R7tDVlOoVrowid,SQVVcCs1lD4R7tDVlOoVeval_times)%>%
-      dplyr::mutate(expsurvs=exp.surv) %>%
-      dplyr::rename(row.name=SQVVcCs1lD4R7tDVlOoVrowid,eval_time=SQVVcCs1lD4R7tDVlOoVeval_times)
-
-  return(final_df)
-}
 
 
 dftoRatetable<-function(lambda,data=popmortality_df,qty=c('survival','mortality','yearlyHaz','dailyHaz'),rmap){
