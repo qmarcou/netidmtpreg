@@ -758,15 +758,13 @@ fit_single_time_point_estimate <-
     if (transition == "11") {
       # FIXME implement data filtering based on state at time s
       data_df[Zt > t, delta1 := 1]
-      censor_surv_t = sapply(pmin(data_df$Zt, t),
-                             shorthand_fun)
+      censor_surv_t = shorthand_fun(pmin(data_df$Zt, t))
       censor_indicators = data_df$delta1
     }
     else {
       # FIXME implement data filtering based on state at time s
       data_df[Tt > t, delta := 1]
-      censor_surv_t = sapply(pmin(data_df$Tt, t),
-                             shorthand_fun)
+      censor_surv_t = shorthand_fun(pmin(data_df$Tt, t))
       censor_indicators = data_df$delta
     }
     censor_weights = censor_indicators / censor_surv_t
