@@ -417,7 +417,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         eval(substitute( # Substitute rmap altered with s time shift
       # use single worker apply here as multiworker is used for bootstrapping
         lapply(vec.t11, function(x){
-          compute_single_time_bootsraps(
+          compute_single_time_bootstraps(
             n_boot = R,
             s = s,
             t = x,
@@ -852,7 +852,7 @@ compute_single_time_bootstrap_sample <-
     )
   }
 
-compute_single_time_bootsraps <-
+compute_single_time_bootstraps <-
   function(n_boot, s, t, transition, X, data_df, ratetable, rmap) {
     boot_res <-
       eval(substitute( # Protect rmap non standard evaluation for survexp
@@ -867,11 +867,19 @@ compute_single_time_bootsraps <-
             ratetable = ratetable,
             rmap = rmapsub
           ),
-          simplify = FALSE
+          simplify = "array"
         ),
         list(rmapsub = substitute(rmap))
       ))
-    return(boot_res)
+
+    # Return a tibble where each col is a coefficient and each row a bootstrap
+    if(dim(X)[[2]]==1){
+      tibble::as_tibble_col(boot_res,column_name = names(boot_res)[[1]])
+    }
+    else{
+      res <- tibble::as_tibble(t(boot_res))
+    }
+    return(res)
   }
 
 summarize_single_time_bootstraps <- function(boot_res) {
