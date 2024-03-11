@@ -155,3 +155,28 @@ testthat::test_that("Check censoring dist fitting and prediction", {
   testthat::skip("not implemented")
   # TODO Add actual censoring
 })
+
+testthat::test_that("Test get_survival_at function", {
+  survfit_df <- tibble::tibble(
+    time = c(0, 1, 2, 3, 4, 5, 6),
+    surv = c(1.0, .85, .75, .60, .55, .40, .20)
+  )
+  # define a closure for testing
+  shorthand_fun <- function(x) get_survival_at(x, survfit_df)
+
+  # Test normal scalar usage
+  testthat::expect_equal(1.0, shorthand_fun(0.0))
+  testthat::expect_equal(1.0, shorthand_fun(.5))
+  testthat::expect_equal(.75, shorthand_fun(2.0))
+  testthat::expect_equal(.75, shorthand_fun(3.0 - 1e-5))
+  testthat::expect_equal(.4, shorthand_fun(5))
+  testthat::expect_equal(.20, shorthand_fun(6.0))
+  testthat::expect_equal(.20, shorthand_fun(7.0))
+
+  # Test vectorised input
+  # TODO
+
+  # Test edge cases
+  testthat::expect_error(shorthand_fun(-1e-10)) # slightly negative value
+  testthat::expect_equal(.20, shorthand_fun(Inf))
+})
