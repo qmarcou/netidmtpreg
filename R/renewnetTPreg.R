@@ -723,11 +723,23 @@ estimate_censoring_dist <-
 #'
 #' @examples
 get_survival_at <- function(t, survfit_data_df) {
-  # Return the `surv` value for the row with greatest time lower than t.
-  surv_t  = survfit_data_df %>%
-    dplyr::filter(time <= t) %>%
-    dplyr::slice_max(order_by = time)
-  return(surv_t$surv[[1]])
+  # Return the `surv` value for the row with greatest time lower than t using a step function
+  # Sanity checks
+  assert_positive(t, "t", invalid_argument)
+  assert_probability(survfit_data_df$surv, "survfit_data_df$surv", invalid_argument)
+
+  # Handle the no event case
+  if (nrow(survfit_data_df) == 1) {
+    if (all(t >= survfit_data_df$time[[1]])) {
+      return(rep_len(1.0, length(t)))
+    } else {
+      invalid_argument("survfit_data_df", "must contain several breakpoints or all `t` values must be greater than the provided time breakpoint")
+    }
+  }
+
+  # Normal case: use a stepfunc for efficient vectorised lookup
+  surv_t <- stepfun(x = survfit_data_df$time[-1], y = survfit_data_df$surv)
+  return(surv_t(t))
 }
 
 fit_single_time_point_estimate <-

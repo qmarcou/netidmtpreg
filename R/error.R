@@ -38,8 +38,13 @@ assert_scalar <- function(x, x_name, abort_class) {
 }
 
 assert_positive <- function(x, x_name, abort_class) {
-  if (x < 0)
+  if (any(x < 0))
     abort_class(arg = x_name, must = "be a positive number.")
+}
+
+assert_probability <- function(x, x_name, abort_class) {
+  if (any(x < 0 | x >1))
+    abort_class(arg = x_name, must = "be in [0.0, 1.0].")
 }
 
 assert_count <- function(x, x_name, abort_class) {

@@ -174,9 +174,43 @@ testthat::test_that("Test get_survival_at function", {
   testthat::expect_equal(.20, shorthand_fun(7.0))
 
   # Test vectorised input
-  # TODO
+  testthat::expect_equal(
+    c(1.0, 1.0, .75, .75, .4, .20, .20),
+    shorthand_fun(c(0.0, .5, 2.0, 3.0 - 1e-5, 5, 6.0, 7.0))
+  )
 
   # Test edge cases
-  testthat::expect_error(shorthand_fun(-1e-10)) # slightly negative value
+  ## slightly negative value
+  testthat::expect_error(shorthand_fun(-1e-10), class = "invalid_argument_error")
+  testthat::expect_error(shorthand_fun(c(1, 2, 3, -1e-10, 5, 6)), class = "invalid_argument_error")
+  ## Infinite positive value
   testthat::expect_equal(.20, shorthand_fun(Inf))
+  ## Single breakpoint survfit_df
+  survfit_df_2 <- tibble::tibble(
+    time = c(0),
+    surv = c(1.0)
+  )
+  shorthand_fun_2 <- function(x) get_survival_at(x, survfit_df_2)
+  testthat::expect_equal(c(1.0, 1.0, 1.0), shorthand_fun_2(c(0, 1, Inf)))
+  testthat::expect_error(shorthand_fun_2(-1e-10), class = "invalid_argument_error")
+  testthat::expect_error(shorthand_fun_2(c(-1e-10, 1)), class = "invalid_argument_error")
+  survfit_df_3 <- tibble::tibble(
+    time = c(1.0), # not defined on 0.0 this time
+    surv = c(1.0)
+  )
+  shorthand_fun_3 <- function(x) get_survival_at(x, survfit_df_3)
+  testthat::expect_equal(c(1.0, 1.0), shorthand_fun_3(c(1, Inf)))
+  testthat::expect_error(shorthand_fun_3(1 - 1e-10), class = "invalid_argument_error")
+  # survival probability greater than 1
+  survfit_df_4 <- tibble::tibble(
+    time = c(0, 1),
+    surv = c(1.1, .85)
+  )
+  testthat::expect_error(get_survival_at(0.0, survfit_df_4), class = "invalid_argument_error")
+  # negative survival probability
+  survfit_df_5 <- tibble::tibble(
+    time = c(0, 1),
+    surv = c(1.0, -1e-5)
+  )
+  testthat::expect_error(get_survival_at(0.0, survfit_df_5), class = "invalid_argument_error")
 })
