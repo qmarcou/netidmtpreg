@@ -130,7 +130,6 @@ testthat::test_that("Test single time point estimation", {
       # Intercept only model.matrix
       data_df = synth_idm_data,
       ratetable = survival::survexp.us,
-      # FIXME there must be a more elegant way than hardcoding df column names
       rmap = list(year = start_date, sex = sex, age = age)
     )
   )
@@ -152,7 +151,7 @@ testthat::test_that("Check censoring dist fitting and prediction", {
       data_df = synth_idm_data
     )
   # get censoring estimate at boundary
-  assertthat::are_equal(get_survival_at(1.5, cens_fit), 1.0) 
+  assertthat::are_equal(get_survival_at(1.5, cens_fit), 1.0)
   testthat::skip("not implemented")
   # TODO Add actual censoring
 })
