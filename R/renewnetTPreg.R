@@ -396,19 +396,25 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         )
 
       # Compute point estimate
+      print("estimate")
       eta.list <-
-        future.apply::future_lapply(vec.t11, function(x)
-          fit_single_time_point_estimate(
-            s,
-            t = x,
-            transition = "11",
-            X = X,
-            data_df = data1,
-            ratetable = ratetable,
-            rmap = rmapsub
-          ))
+        eval(substitute( # Substitute rmap altered with s time shift
+          future.apply::future_lapply(vec.t11, function(x)
+            fit_single_time_point_estimate(
+              s,
+              t = x,
+              transition = "11",
+              X = X,
+              data_df = data1,
+              ratetable = ratetable,
+              rmap = rmapsub
+            )),
+          list(rmapsub = substitute(rmapsub))
+        ))
       # Compute bootstrap
+      print("bootstrap")
       boot.eta <-
+        eval(substitute( # Substitute rmap altered with s time shift
       # use single worker apply here as multiworker is used for bootstrapping
         lapply(vec.t11, function(x){
           compute_single_time_bootsraps(
@@ -419,8 +425,10 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             X = X,
             data_df = data1,
             ratetable = ratetable,
-            rmapsub = rmapsub
-          )})
+            rmap = rmapsub
+          )}),
+        list(rmapsub = substitute(rmapsub))
+        ))
 
       eta_list <- future.apply::future_lapply(eta.list, function(x)
         x[["eta"]])
@@ -715,10 +723,10 @@ estimate_censoring_dist <-
 
 #' Estimated survival at time t from a survfit like df.
 #'
-#' @param t Single numeric value
+#' @param t Single or vector numeric value $\geq$ 0.
 #' @param survfit_data_df Should contain at least columns `surv` and `time`.
 #'
-#' @return A single numeric value
+#' @return A survival probabilities of same length as `t`.
 #'
 #'
 #' @examples
@@ -771,24 +779,24 @@ fit_single_time_point_estimate <-
 
     # Create link function and family objects taking into account background mortality
     custom_link = if (transition %in% c('11', '12', '22')) {
-      eval(substitute(
-      rellogit(
-        s = s,
-        t = t,
-        data_df = data_df,
-        ratetable = ratetable,
+      eval(substitute( # Protect rmap non standard evaluation for survexp
+        rellogit(
+          s = s,
+          t = t,
+          data_df = data_df,
+          ratetable = ratetable,
           rmap = rmapsub
         ),
         list(rmapsub = substitute(rmap))
       ))
     }
     else {
-      eval(substitute(
-      offsetlogit(
-        s = s,
-        t = t,
-        data_df = data_df,
-        ratetable = ratetable,
+      eval(substitute( # Protect rmap non standard evaluation for survexp
+        offsetlogit(
+          s = s,
+          t = t,
+          data_df = data_df,
+          ratetable = ratetable,
           rmap = rmapsub
         ),
         list(rmapsub = substitute(rmap))
@@ -822,11 +830,12 @@ fit_single_time_point_estimate <-
   }
 
 compute_single_time_bootstrap_sample <-
-  function(s, t, transition, X, data_df, ratetable, rmapsub) {
+  function(s, t, transition, X, data_df, ratetable, rmap) {
     # Sample row ids with replacement
     n = nrow(data_df)
     boot_ids = sample(1:n, n, replace = TRUE)
     return(
+      eval(substitute( # Protect rmap non standard evaluation for survexp
       fit_single_time_point_estimate(
         s = s,
         t = t ,
@@ -837,14 +846,31 @@ compute_single_time_bootstrap_sample <-
         data_df = data_df[boot_ids, ],
         ratetable = ratetable,
         rmap = rmapsub
-      )
+      ),
+      list(rmapsub = substitute(rmap))
+      ))
     )
   }
 
 compute_single_time_bootsraps <-
-  function(n_boot, s, t, transition, X, data_df, ratetable, rmapsub) {
+  function(n_boot, s, t, transition, X, data_df, ratetable, rmap) {
     boot_res <-
-      future.apply::future_replicate(n = n_boot, expr = compute_single_time_bootstrap_sample(s = s, t = t, transition = transition, X = X, data_df = data_df, ratetable = ratetable, rmapsub = rmapsub), simplify = FALSE)
+      eval(substitute( # Protect rmap non standard evaluation for survexp
+        future.apply::future_replicate(
+          n = n_boot,
+          expr = compute_single_time_bootstrap_sample(
+            s = s,
+            t = t,
+            transition = transition,
+            X = X,
+            data_df = data_df,
+            ratetable = ratetable,
+            rmap = rmapsub
+          ),
+          simplify = FALSE
+        ),
+        list(rmapsub = substitute(rmap))
+      ))
     return(boot_res)
   }
 
