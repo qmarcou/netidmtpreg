@@ -37,7 +37,7 @@ testthat::test_that("Test calling wrapper for mod.glm.fit.", {
 
 })
 
-testthat::test_that("IDM survival model Fitting", {
+testthat::test_that("IDM crude survival model Fitting", {
   # Test single dimensionnal model.matrix (e.g intercept only formula ~ 1)
   # Fixed by feb8378ef0a17d1aca30f2fda55ec57c77711e64
   # TODO test crude mortality estimates correctness
@@ -108,34 +108,31 @@ testthat::test_that("Test single time point estimation" , {
   )
   # Generate random age and sex labels
   synth_idm_data <-
-    synth_idm_data %>% tibble::add_column(
-      sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
-      age = runif(n = n_ind, min = 50, max = 80)
-    )
+    synth_idm_data %>% tibble::add_column(sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
+                                          age = runif(n = n_ind, min = 50, max = 80))
   # Generate random start of follow up dates
   # FIXME a date before 1940 or after 2012 (limits of uspop ratetable) is
   # extremely unlikely with these parameters but not impossible.
   synth_idm_data <-
-    synth_idm_data %>% tibble::add_column(year = as.Date.numeric(
+    synth_idm_data %>% tibble::add_column(start_date = as.Date.numeric(
       x = rnorm(n = n_ind, mean = 0, sd = 1e2),
       origin = as.Date("15/06/1976", "%d/%m/%Y")
     ))
-  fit_single_time_point_estimate(
-    s = 0,
-    # No time correction needed in rmap for s=0
-    t = 1.5,
-    transition = "11",
-    X = array(1, dim = c(n_ind, 1)),
-    # Intercept only model.matrix
-    data_df = synth_idm_data,
-    ratetable = survival::survexp.us,
-    # FIXME there must be a more elegant way than hardcoding df column names
-    #rmapsub = list(year = start_date)
-    rmapsub = list(
-      sex = "male",
-      year = 1970,
-      age = 65 * 365 # age in days
-    ))
+  # Fit a GLM estimate
+  testthat::expect_no_error(
+    fit_single_time_point_estimate(
+      s = 0,
+      # No time correction needed in rmap for s=0
+      t = 1.5,
+      transition = "11",
+      X = array(1, dim = c(n_ind, 1)),
+      # Intercept only model.matrix
+      data_df = synth_idm_data,
+      ratetable = survival::survexp.us,
+      # FIXME there must be a more elegant way than hardcoding df column names
+      rmap = list(year = start_date, sex = sex, age = age)
+    )
+  )
 })
 
 testthat::test_that("Check censoring dist fitting and prediction", {

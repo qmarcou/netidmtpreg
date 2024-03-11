@@ -405,7 +405,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             X = X,
             data_df = data1,
             ratetable = ratetable,
-            rmapsub = rmapsub
+            rmap = rmapsub
           ))
       # Compute bootstrap
       boot.eta <-
@@ -731,7 +731,7 @@ get_survival_at <- function(t, survfit_data_df) {
 }
 
 fit_single_time_point_estimate <-
-  function(s, t, transition, X, data_df, ratetable, rmapsub) {
+  function(s, t, transition, X, data_df, ratetable, rmap) {
     # Compute censoring weights
     cens_surv = estimate_censoring_dist(s, t, X, data_df)
 
@@ -761,22 +761,28 @@ fit_single_time_point_estimate <-
 
     # Create link function and family objects taking into account background mortality
     custom_link = if (transition %in% c('11', '12', '22')) {
+      eval(substitute(
       rellogit(
         s = s,
         t = t,
         data_df = data_df,
         ratetable = ratetable,
-        rmapsub = rmapsub
-      )
+          rmap = rmapsub
+        ),
+        list(rmapsub = substitute(rmap))
+      ))
     }
     else {
+      eval(substitute(
       offsetlogit(
         s = s,
         t = t,
         data_df = data_df,
         ratetable = ratetable,
-        rmapsub = rmapsub
-      )
+          rmap = rmapsub
+        ),
+        list(rmapsub = substitute(rmap))
+      ))
     }
     # TODO check whether the binomial variance should be adjusted too
     custom_family = binomial(link = custom_link)
@@ -820,7 +826,7 @@ compute_single_time_bootstrap_sample <-
         X = X[boot_ids, , drop = FALSE],
         data_df = data_df[boot_ids, ],
         ratetable = ratetable,
-        rmapsub = rmapsub
+        rmap = rmapsub
       )
     )
   }
@@ -837,11 +843,12 @@ summarize_single_time_bootstraps <- function(boot_res) {
   return(apply(boot_res, 2, sd, na.rm = FALSE))
 }
 
-rellogit <- function(s, t, data_df, ratetable, rmapsub) {
+rellogit <- function(s, t, data_df, ratetable, rmap) {
+  enquo_rmap <- rlang::enexpr(rmap)
   SL <-
     eval(substitute(
-      compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsubs),
-      list(rmapsubs = rmapsub)
+      compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
+      list(rmapsub = substitute(rmap))
     ))$expsurvs
   linkfun <- function(mu){
     log((mu / SL) / abs(1 - (mu / SL)))
@@ -869,11 +876,11 @@ rellogit <- function(s, t, data_df, ratetable, rmapsub) {
 }
 
 # an offset survival logit link function closure for 13 and 23 transitions
-offsetlogit <- function(s, t, data_df, ratetable, rmapsub) {
+offsetlogit <- function(s, t, data_df, ratetable, rmap) {
   SL <-
     eval(substitute(
-      compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsubs),
-      list(rmapsubs = rmapsub)
+      compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
+      list(rmapsub = substitute(rmap))
     ))$expsurvs
   dp <- 1 - SL #death probability
   linkfun <- function(miu)
