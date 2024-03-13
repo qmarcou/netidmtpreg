@@ -725,16 +725,20 @@ estimate_censoring_dist <-
 #'
 #' @param t Single or vector numeric value $\geq$ 0.
 #' @param survfit_data_df Should contain at least columns `surv` and `time`.
+#' @param safe boolean, Indicate whether to enable input argument checking, default to TRUE.
 #'
 #' @return A survival probabilities of same length as `t`.
 #'
 #'
 #' @examples
-get_survival_at <- function(t, survfit_data_df) {
+get_survival_at <- function(t, survfit_data_df, safe = TRUE) {
   # Return the `surv` value for the row with greatest time lower than t using a step function
   # Sanity checks
-  assert_positive(t, "t", invalid_argument)
-  assert_probability(survfit_data_df$surv, "survfit_data_df$surv", invalid_argument)
+  if (safe) {
+    assert_positive(t, "t", invalid_argument)
+    assertr::verify(survfit_data_df, assertr::has_all_names("time", "surv"), error_fun = invalid_argument("survfit_data_df", "contain both a `time` and `surv` column"))
+    assert_probability(survfit_data_df$surv, "survfit_data_df$surv", invalid_argument)
+  }
 
   # Handle the no event case
   if (nrow(survfit_data_df) == 1) {
@@ -882,7 +886,7 @@ compute_single_time_bootstraps <-
     return(res)
   }
 
-summarize_single_time_bootstraps <- function(boot_res) {
+summarize_single_time_bootstraps <- function(boot_res, point_estimate) {
   #return(quantile(boot_res, probs = c(0.025, .975)))
   return(apply(boot_res, 2, sd, na.rm = FALSE))
 }

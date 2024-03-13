@@ -213,4 +213,18 @@ testthat::test_that("Test get_survival_at function", {
     surv = c(1.0, -1e-5)
   )
   testthat::expect_error(get_survival_at(0.0, survfit_df_5), class = "invalid_argument_error")
+  # Missing columns
+  testthat::expect_error(get_survival_at(
+    0.0,
+    tibble::tibble(time = c(.0))
+  ), class = "invalid_argument_error")
+  testthat::expect_error(get_survival_at(
+    0.0,
+    tibble::tibble(surv = c(1.0))
+  ), class = "invalid_argument_error")
+  # Works with extra columns
+  testthat::expect_no_error(get_survival_at(
+    0.0,
+    survfit_df_2 %>% tibble::add_column(x = c("foo"))
+  ))
 })
