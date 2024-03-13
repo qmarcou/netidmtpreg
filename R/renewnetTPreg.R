@@ -397,7 +397,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
 
       # Compute point estimate
       print("estimate")
-      eta.list <-
+      coef_estimates <-
         eval(substitute( # Substitute rmap altered with s time shift
           future.apply::future_lapply(vec.t11, function(x)
             fit_single_time_point_estimate(
@@ -411,13 +411,20 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             )),
           list(rmapsub = substitute(rmapsub))
         ))
+      # unlist the results into a single tibble instead of a list, add t
+      # information as first column
+      coef_estimates <-
+        coef_estimates %>%
+        dplyr::bind_rows() %>%
+        tibble::add_column(t = vec.t11, .before = 1)
+
       # Compute bootstrap
       print("bootstrap")
-      boot.eta <-
+      boot_summaries <-
         eval(substitute( # Substitute rmap altered with s time shift
       # use single worker apply here as multiworker is used for bootstrapping
         lapply(vec.t11, function(x){
-          compute_single_time_bootstraps(
+          compute_single_time_bootstraps( # Compute bootstraps estimates
             n_boot = R,
             s = s,
             t = x,
@@ -426,27 +433,60 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             data_df = data1,
             ratetable = ratetable,
             rmap = rmapsub
-          )}),
+          ) %>% # and summarize them (estimate SD, CIs)
+            summarize_single_time_bootstraps()
+        }),
         list(rmapsub = substitute(rmapsub))
         ))
+      # unlist the results into a single tibble instead of a list, add t
+      # information as first column
+      boot_summaries <-
+        boot_summaries %>%
+        dplyr::bind_rows() %>%
+        tibble::add_column(t = vec.t11, .before = 1)
 
-      eta_list <- future.apply::future_lapply(eta.list, function(x)
-        x[["eta"]])
-      sd_list <- lapply(eta.list, function(x)
-        x[["sd"]])
-      coef <- do.call("bind_rows", eta_list)
-      sd <- do.call("bind_rows", sd_list)
 
+      # Combine point estimate and bootstrap information into a single tibble
+      ## Format tibble to get one line per time point and parameter
+      boot_summaries <-
+        boot_summaries %>% tidyr::pivot_longer(
+          cols = !t,
+          names_sep = "_",
+          names_to = c("covariate", "statistic")
+        ) %>% tidyr::pivot_wider(names_from = "statistic", values_from = "value")
+      ## Same thing for the point estimates tibble
+      coef_estimates <-
+        coef_estimates %>% tidyr::pivot_longer(cols = !t,
+                                               names_to = "covariate",
+                                               values_to = "estimate")
+      ## Join the resulting tables on time step and covariate name
+      results_df <- dplyr::full_join(x = coef_estimates, y = boot_summaries,
+                                     by = c("t", "covariate"))
+      ## FIXME Retransform the result to existing format for temporary
+      ## consistency with existing methods
+      extract_stat_matrix <- function(stat_name){
+        ## define a closure for conciseness
+        return(
+          results_df %>%
+            dplyr::select(t, covariate, {{ stat_name }}) %>%
+            tidyr::pivot_wider(names_from = "covariate",
+                               values_from = {{ stat_name }}) %>%
+            dplyr::select(!t) %>%
+            as.matrix()
+        )
+      }
+
+      # Create returned object
       CO <-
         list(
           transition = "11",
           formula = formula,
           time = vec.t11,
-          coefficients = coef,
-          SD = sd,
-          LWL = coef - 1.96 * sd,
-          UPL = coef + 1.96 * sd,
-          p.value = 2 * pnorm(-abs(as.matrix(coef / sd)))
+          coefficients = extract_stat_matrix("estimate"),
+          SD = extract_stat_matrix("sd"),
+          LWL = extract_stat_matrix("ci.lb"),
+          UPL = extract_stat_matrix("ci.ub"),
+          n.failed.boot = NULL
         )
       if (trans == "all") {
         co$co11 = CO
@@ -725,7 +765,8 @@ estimate_censoring_dist <-
 #'
 #' @param t Single or vector numeric value $\geq$ 0.
 #' @param survfit_data_df Should contain at least columns `surv` and `time`.
-#' @param safe boolean, Indicate whether to enable input argument checking, default to TRUE.
+#' @param safe boolean, Indicate whether to enable input argument checking,
+#'   default to TRUE.
 #'
 #' @return A survival probabilities of same length as `t`.
 #'
@@ -878,7 +919,7 @@ compute_single_time_bootstraps <-
 
     # Return a tibble where each col is a coefficient and each row a bootstrap
     if(dim(X)[[2]]==1){
-      tibble::as_tibble_col(boot_res,column_name = names(boot_res)[[1]])
+      res <- tibble::as_tibble_col(boot_res,column_name = names(boot_res)[[1]])
     }
     else{
       res <- tibble::as_tibble(t(boot_res))
@@ -886,9 +927,18 @@ compute_single_time_bootstraps <-
     return(res)
   }
 
-summarize_single_time_bootstraps <- function(boot_res, point_estimate) {
-  #return(quantile(boot_res, probs = c(0.025, .975)))
-  return(apply(boot_res, 2, sd, na.rm = FALSE))
+summarize_single_time_bootstraps <- function(boot_res_df) {
+  boot_summary <-
+    boot_res_df %>% dplyr::summarise(dplyr::across(
+      .cols = everything(),
+      .fns = list(
+        sd = ~ sd(.x, na.rm = TRUE),
+        ci.lb = ~ quantile(.x, prob = 0.025, na.rm = TRUE),
+        ci.ub = ~ quantile(.x, prob = .975, na.rm = TRUE),
+        n.failed.boot = ~ rlang::are_na(.x) %>% sum()
+      )
+    ))
+  return(boot_summary)
 }
 
 rellogit <- function(s, t, data_df, ratetable, rmap) {

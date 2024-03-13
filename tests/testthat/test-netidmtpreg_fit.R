@@ -228,3 +228,25 @@ testthat::test_that("Test get_survival_at function", {
     survfit_df_2 %>% tibble::add_column(x = c("foo"))
   ))
 })
+
+testthat::test_that("Test summarize_single_time_bootstraps", {
+  mock_boot_df <-
+    tibble::tibble("(Intercept)" = rnorm(1e5,mean = 1, sd = 1),
+                   "X1" = rnorm(1e5, mean = 0, sd = 1))
+  testthat::expect_no_error(boot_summary <- summarize_single_time_bootstraps(mock_boot_df))
+  assertr::verify(
+    boot_summary,
+    assertr::has_only_names(
+      "(Intercept)_sd",
+      "(Intercept)_ci.lb",
+      "(Intercept)_ci.ub",
+      "(Intercept)_n.failed.boot",
+      "X1_sd",
+      "X1_ci.lb",
+      "X1_ci.ub",
+      "X1_n.failed.boot"
+    )
+  )
+  # TODO check values
+  #assertr::verify()
+})
