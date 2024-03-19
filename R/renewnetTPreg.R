@@ -754,9 +754,9 @@ estimate_censoring_dist <-
     cens_fit = survival::survfit(surv_resp ~ +1)
     # Use summary() to keep only times of censoring events
     cens_fit = summary(cens_fit, censored = FALSE)
-    # Add start time (time = s) censoring probability
+    # Add start time (time = s) censoring probability as first row
     cens_surv = tibble::tibble(time = cens_fit$time, surv = cens_fit$surv) %>%
-      tibble::add_row(time = 0.0, surv = 1.0)
+      tibble::add_row(time = 0.0, surv = 1.0, .before = 1)
 
     return(cens_surv)
   }

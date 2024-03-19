@@ -152,6 +152,18 @@ testthat::test_that("Check censoring dist fitting and prediction", {
     )
   # get censoring estimate at boundary
   assertthat::are_equal(get_survival_at(1.5, cens_fit), 1.0)
+  # Add two censoring events to check survfit_df ordering
+  synth_idm_data[as.integer(c(n_ind/2,n_ind/3)), "delta"] <- 0
+  cens_fit <-
+    estimate_censoring_dist(
+      s = 0,
+      t = 1.5,
+      X = NULL,
+      data_df = synth_idm_data
+    )
+  # get censoring estimate at boundary
+  testthat::expect_no_error(get_survival_at(1.5, cens_fit))
+
   testthat::skip("not implemented")
   # TODO Add actual censoring
 })
