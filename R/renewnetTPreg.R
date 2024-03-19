@@ -789,12 +789,9 @@ get_survival_at <- function(t, survfit_data_df, safe = TRUE) {
       invalid_argument("survfit_data_df", "must contain several breakpoints or all `t` values must be greater than the provided time breakpoint")
     }
   }
-  # print(survfit_data_df)
-  survfit_data_df <- survfit_data_df %>% dplyr::arrange(time)
   # Normal case: use a stepfunc for efficient vectorised lookup
-  tryCatch(
-  expr = {surv_t <- stats::stepfun(x = survfit_data_df$time[-1], y = survfit_data_df$surv)},
-  error = {function (x) print(survfit_data_df)})
+ surv_t <- stats::stepfun(x = survfit_data_df$time[-1], y = survfit_data_df$surv),
+
   return(surv_t(t))
 }
 
