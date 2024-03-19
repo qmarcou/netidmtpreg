@@ -52,6 +52,8 @@ testthat::test_that("IDM crude survival model Fitting", {
   }
 })
 
+devtools::dev_mode(on = TRUE)
+devtools::install_local()
 testthat::test_that("IDM Net survival model Fitting", {
   # Check that the model runs even with nonsense population information
   n_ind <- 1e4
@@ -74,25 +76,29 @@ testthat::test_that("IDM Net survival model Fitting", {
       x = rnorm(n = n_ind, mean = 0, sd = 1e2),
       origin = as.Date("15/06/1976", "%d/%m/%Y")
     ))
-  for (transition in c("11")) {
-    renewnetTPreg(
-      formula = ~1,
-      synth_idm_data,
-      # Use a standard ratetable
-      ratetable = survival::survexp.us,
-      rmap = list(
-        age = age,
-        sex = sex,
-        year = start_date
-      ),
-      time_dep_popvars = list("age", "year"),
-      s = 0,
-      t = 1.5,
-      by = n_ind / 2,
-      trans = transition,
-      link = "logit",
-      R = 2 # Number of bootstraps
-    )
+  for(session_type in c("sequential", "multisession")){
+    future::plan(session_type)
+    for (transition in c("11")) {
+      renewnetTPreg(
+        formula = ~1,
+        synth_idm_data,
+        # Use a standard ratetable
+        ratetable = survival::survexp.us,
+        rmap = list(
+          age = age,
+          sex = sex,
+          year = start_date
+        ),
+        time_dep_popvars = list("age", "year"),
+        s = 0,
+        t = 1.5,
+        by = n_ind / 2,
+        trans = transition,
+        link = "logit",
+        R = 2 # Number of bootstraps
+      )
+    }
+    future::plan(future::sequential)
   }
   testthat::skip("not implemented")
 })
