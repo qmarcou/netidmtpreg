@@ -790,7 +790,7 @@ get_survival_at <- function(t, survfit_data_df, safe = TRUE) {
     }
   }
   # Normal case: use a stepfunc for efficient vectorised lookup
- surv_t <- stats::stepfun(x = survfit_data_df$time[-1], y = survfit_data_df$surv),
+ surv_t <- stats::stepfun(x = survfit_data_df$time[-1], y = survfit_data_df$surv)
 
   return(surv_t(t))
 }
