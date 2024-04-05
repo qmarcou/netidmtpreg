@@ -36,21 +36,103 @@ testthat::test_that("Test calling wrapper for mod.glm.fit.", {
   testthat::expect_true(all(rlang::are_na(beta)))
 })
 
-testthat::test_that("IDM crude survival model Fitting", {
+# Crude survival testing
+testthat::test_that("IDM crude survival model Fitting runs", {
   # Test single dimensionnal model.matrix (e.g intercept only formula ~ 1)
   # Fixed by feb8378ef0a17d1aca30f2fda55ec57c77711e64
   # TODO test crude mortality estimates correctness
-  testthat::skip("not implemented")
+  #testthat::skip("not implemented")
   # Crude mortality binomial regression
+  n_ind <- 1e4
+  l_illness <- 1.0
+  l_death <- 0.1
+  s_time <- 0
   synth_idm_data <- generate_uncensored_ind_exp_idm_data(
-    n_individuals = 1e4,
-    lambda_illness = 1.0,
-    lambda_death = 0.1
+    n_individuals = n_ind,
+    lambda_illness = l_illness,
+    lambda_death = l_death
   )
-  for (transition in c("all", "11", "12", "22", "13", "23")) {
-    renewnetTPreg(~1, synth_idm_data, ratetable = NULL, s = 0, t = 10, by = 1, trans = transition)
+  # FIXME I should not have to have those
+  # Generate random age and sex labels
+  synth_idm_data <-
+    synth_idm_data %>% tibble::add_column(
+      sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
+      age = runif(n = n_ind, min = 50, max = 80)
+    )
+  estimates <- list()
+  for (transition in c("11")) {
+  # for (transition in c("all", "11", "12", "22", "13", "23")) {
+    estimates[transition] <- 
+    renewnetTPreg(~1, synth_idm_data,
+      ratetable = NULL,
+      rmap = NULL,
+      time_dep_popvars = NULL,
+      s = s_time,
+      t = 1.5,
+      by = n_ind / 2,
+      trans = transition,
+      link = "logit",
+      R = 1 # Number of bootstraps
+    )
+  }
+
+  # Check agreement with generating parameters
+  expected_tp <- collections::dict()
+  ## Check 11 transition estimates
+  expected_tp$set("11" , pexp(estimates[["11"]]$time - s_time,
+    rate = (l_illness + l_death),
+    lower = FALSE # P(T>t)
+  ))
+
+  ## Check 13 transition estimates
+  # In this simple test death rate is the same starting from state 1 or 2
+  # therefore state 2 does not influence 13 transition
+  expected_tp$set("13", pexp(estimates[["13"]]$time - s_time,
+    rate = l_death,
+    lower = TRUE # P(T<t)
+  ))
+
+  ## Check 12 transition estimates: 12 transition and no death
+  p_illness <- pexp(estimates[["11"]]$time - s_time,
+    rate = l_illness,
+    lower = TRUE # P(T>t)
+  )
+  p_no_death <-   p_illness <- pexp(estimates[["11"]]$time - s_time,
+    rate = l_death,
+    lower = FALSE # P(T>t)
+  )
+  expected_tp$set("12", p_illness * p_no_death)
+
+  ## Check 23 transition estimates
+  expected_tp$set("23", pexp(estimates[["23"]]$time - s_time,
+    rate = l_death,
+    lower = TRUE # P(T<t)
+  ))
+
+  ## Check 22 transition estimates: survival probability
+  expected_tp$set("22", pexp(estimates[["22"]]$time - s_time,
+    rate = l_death,
+    lower = FALSE # P(T<t)
+  ))
+
+  for (transition in c("11")) {
+    # for (transition in c("all", "11", "12", "22", "13", "23")) {
+    tp_val <- expected_tp$get(transition)
+    expected_coefs <- log(tp_val / (1 - tp_val))
+
+    testthat::expect_equal(
+      estimates[[transition]]$coefficients,
+      expected_coefs,
+      tolerance = .01
+    )
   }
 })
+
+testthat::test_that("IDM crude survival regression gives correct
+                      estimates in absence of covariates and censoring 
+                      and exponentially distributed events", {
+
+                      })
 
 devtools::dev_mode(on = TRUE)
 devtools::install_local()

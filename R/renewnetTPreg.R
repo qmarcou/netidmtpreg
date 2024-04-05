@@ -942,12 +942,15 @@ summarize_single_time_bootstraps <- function(boot_res_df) {
 }
 
 rellogit <- function(s, t, data_df, ratetable, rmap) {
-  enquo_rmap <- rlang::enexpr(rmap)
-  SL <-
+  SL <- 1.0 # Allow for crude mortality model fitting
+  if(!is.null(ratetable)){
+      SL <-
     eval(substitute(
       compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
       list(rmapsub = substitute(rmap))
     ))$expsurvs
+  }
+
   linkfun <- function(mu){
     log((mu / SL) / abs(1 - (mu / SL)))
   }
@@ -975,11 +978,16 @@ rellogit <- function(s, t, data_df, ratetable, rmap) {
 
 # an offset survival logit link function closure for 13 and 23 transitions
 offsetlogit <- function(s, t, data_df, ratetable, rmap) {
-  SL <-
+  
+  SL <- 1.0 # Allow for crude mortality model fitting
+  if(!is.null(ratetable)){
+      SL <-
     eval(substitute(
       compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
       list(rmapsub = substitute(rmap))
     ))$expsurvs
+  }
+
   dp <- 1 - SL #death probability
   linkfun <- function(miu)
     log((miu - dp) / (1 - (miu - dp)))
