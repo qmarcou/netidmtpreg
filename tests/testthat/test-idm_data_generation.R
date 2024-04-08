@@ -177,3 +177,75 @@ testthat::test_that("Test application of censoring times", {
     censoring_times = c(1, 2)
   ))
 })
+
+testthat::test_that("Test death times update", {
+  iddata_df <- tibble::tibble(
+    Zt = c(1, 1, 2), # Zt>Tt cannot be observed in correct iddata
+    delta1 = 1, # Uncensored
+    Tt = c(2, 3, 3),
+    delta = 1 # Uncensored
+  )
+  iddata_df <- iddata_df %>% tibble::add_column(
+    id = seq.int(
+      from = 1,
+      to = length(iddata_df$Zt),
+      by = 1
+    ),
+    .before = 1
+  )
+
+  # Individual censoring times
+  death_times <- c(3, 2, 1)
+  expected_df <- tibble::tibble(
+    id = iddata_df$id,
+    Zt = c(1, 1, 1),
+    delta1 = 1,
+    Tt = c(2, 2, 1),
+    delta = 1,
+  )
+  testthat::expect_no_error(updated_iddata_df <-
+    apply_iddata_death(
+      iddata_df = iddata_df,
+      death_times =  death_times
+    ))
+  # drop remaining attribute from DT conversion
+  # see: https://github.com/tidyverse/tibble/issues/1573#issuecomment-2042991264
+  attr(updated_iddata_df, ".internal.selfref") <- NULL
+  testthat::expect_equal(updated_iddata_df, expected_df)
+
+  # Common death time
+  expected_df <- tibble::tibble(
+    id = iddata_df$id,
+    Zt = c(1, 1, 1.5),
+    delta1 = 1,
+    Tt = c(1.5, 1.5, 1.5),
+    delta = 1,
+  )
+  testthat::expect_no_error(updated_iddata_df <-
+    apply_iddata_death(
+      iddata_df = iddata_df,
+      death_times = 1.5
+    ))
+  attr(updated_iddata_df, ".internal.selfref") <- NULL
+  testthat::expect_equal(updated_iddata_df, expected_df)
+
+  # Check that it fails with illfitted number of death times
+  iddata_df <- tibble::tibble(
+    Zt = c(1, 2, 3, 4), # Zt>Tt cannot be observed in correct iddata
+    delta1 = 1, # Uncensored
+    Tt = c(2, 3, 4, 5),
+    delta = 1 # Uncensored
+  )
+  iddata_df <- iddata_df %>% tibble::add_column(
+    id = seq.int(
+      from = 1,
+      to = length(iddata_df$Zt),
+      by = 1
+    ),
+    .before = 1
+  )
+  testthat::expect_error(apply_iddata_death(
+    iddata_df = iddata_df,
+    death_times = c(1, 2)
+  ))
+})

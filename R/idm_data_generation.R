@@ -131,16 +131,17 @@ generate_uncensored_ind_exp_idm_data <-
     return(id_data)
   }
 
-#' Apply censoring times to an existing Illness-Death dataframe
+#' Apply censoring times to an existing Illness-Death dataframe.
 #'
-#' Update event times and censoring indicators according to the prescribed
-#' censoring time(s). Note that previous censoring information will be updated
-#' where newer censoring times are provided.
+#' Update event times (Zt and Tt) and censoring indicators according to the
+#' prescribed censoring time(s). Note that previous censoring information will
+#' be updated where newer censoring times are provided.
 #'
-#' @param iddata_df An Illness-Death dataframe in `iddata` format. @param
-#' censoring_times Censoring times.
+#' @param iddata_df An Illness-Death dataframe in `iddata` format.
+#' @param censoring_times Censoring time(s), either a single value or a vector
+#'  length `nrow(iddata_df)`
 #'
-#' @return An iddata tibble with updated censoring times @examples
+#' @return An iddata tibble with updated censoring times
 apply_iddata_censoring <- function(
     iddata_df,
     censoring_times) {
@@ -162,9 +163,34 @@ apply_iddata_censoring <- function(
   return(iddata_df)
 }
 
+#' Update death times in an existing Illness-Death dataframe.
+#'
+#' Update event times (Zt and Tt) according to the prescribed death time(s).
+#' Death times are only updated when the new death time is earlier than the
+#' previous one for a given individual. This function cannot postpone an
+#' existing death time as the parameters provide no way to know whether illness
+#' occurred between old and new death time.
+#'
+#' @param iddata_df An Illness-Death dataframe in `iddata` format.
+#' @param death_times Updated death time(s), either a single value or a vector
+#'  length `nrow(iddata_df)`
+#'
+#' @return An iddata tibble with updated death times
 apply_iddata_death <- function(
     iddata_df,
-    death_times
-){
-  
+    death_times) {
+  # Apply provided death times
+  iddata_df <- data.table::as.data.table(iddata_df) %>%
+    tibble::add_column(SQVVcCs1lD4R7tDVlOoV_death_times = death_times)
+  iddata_df[
+    SQVVcCs1lD4R7tDVlOoV_death_times < Zt,
+    Zt := SQVVcCs1lD4R7tDVlOoV_death_times
+  ]
+  iddata_df[
+    SQVVcCs1lD4R7tDVlOoV_death_times < Tt,
+    Tt := SQVVcCs1lD4R7tDVlOoV_death_times
+  ]
+  iddata_df <- tibble::as_tibble(iddata_df) %>%
+    dplyr::mutate(SQVVcCs1lD4R7tDVlOoV_death_times = NULL)
+  return(iddata_df)
 }
