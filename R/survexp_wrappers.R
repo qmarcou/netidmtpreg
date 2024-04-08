@@ -41,7 +41,7 @@
 
 
 #' @title Compute expected survival for one individual at several times
-#' @description A wrapper function calling survival::survexp to compute expected survival probablity of a single individual for one or several times.
+#' @description A wrapper function calling survival::survexp to compute expected survival probablity of a single individual for one or several times, using a piecewise constant hazard (pch) defined in a ratetable object.
 #' @param individual_df A DF or DT containing a single row with a single patient's covariates
 #' @param eval_times Times at which the expected survival should be evaluated. Times must be in days if using a ratetable with a Date component.
 #' @param ratetable A ratetable object
@@ -51,40 +51,45 @@
 #' @return Returns a tibble with two columns: eval_times and surv the survival probability from the survexp object at those times. Upon failure of surv.exp because of missing data in the DF row, a vector of NA will be returned.
 #'
 #' @example indiv_survprob_pch(patients[1],eval_times = c(10,20,30),ratetable = slopop,rmap=list(year=date_chir, age=age_at_dg, sex=sexe))
-indiv_survprob_pch<-function(individual_df,eval_times,ratetable,rmap,fast=FALSE){
-
+indiv_survprob_pch <- function(individual_df, eval_times, ratetable, rmap, fast = FALSE) {
   # # pch for piecewise constant hazard
-  if(!fast){
+  if (!fast) {
+    if (!all(is.numeric(eval_times))) stop("Numeric values are expected for relative `eval_times`.")
+    if (!all(eval_times > 0)) stop("Relative `eval_times` must be greater than 0")
+    # initially I wanted to allow the possibility to give absolute times and not only relative ones
+    # however this needed to fiddle with the rmap object and find the correct date argument etc
+    # in the end this is really not worth it
+    # same goes for specifying a start time (s time)
 
-  if(!all(is.numeric(eval_times))) stop("Numeric values are expected for relative `eval_times`.")
-  if(!all(eval_times>0)) stop("Relative `eval_times` must be greater than 0")
-  # initially I wanted to allow the possibility to give absolute times and not only relative ones
-  # however this needed to fiddle with the rmap object and find the correct date argument etc
-  # in the end this is really not worth it
-  # same goes for specifying a start time (s time)
-
-  if(nrow(individual_df)>1){
-    stop("`individual_df` should contain a single row (1 subject and its covariates)")
-  }
+    if (nrow(individual_df) > 1) {
+      stop("`individual_df` should contain a single row (1 subject and its covariates)")
+    }
   }
 
   # eval_times can be relative and must be expressed in days
-  exp.surv<- tryCatch(
-  eval(substitute(survival::survexp(formula = ~ 1, data=individual_df,
-                                              rmap = rmapsub ,method = 'ederer',times=c(eval_times), ratetable = ratetable,na.action=na.omit),
-                 list(rmapsub=substitute(rmap))))$surv,
-  error = function(err) {
-    if(err$message =="Data set has 0 rows"){
-      return(rep(NA,length(eval_times)))
+  exp.surv <- tryCatch(
+    eval(substitute(
+      survival::survexp(
+        formula = ~1, data = individual_df,
+        rmap = rmapsub,
+        method = "ederer",
+        times = c(eval_times),
+        ratetable = ratetable,
+        na.action = na.omit
+      ),
+      list(rmapsub = substitute(rmap))
+    ))$surv,
+    error = function(err) {
+      if (err$message == "Data set has 0 rows") {
+        return(rep(NA, length(eval_times)))
+      } else {
+        message("Exception caught upon calling survival::survexp() in indiv_survprob_pch().")
+        message(paste0("Caught on individual_df: ", paste(individual_df, collapse = " ")))
+        return(stop(err))
+      }
     }
-    else{
-      message("Exception caught upon calling survival::survexp() in indiv_survprob_pch().")
-      message(paste0("Caught on individual_df: ",paste(individual_df,collapse = " ")))
-      return(stop(err))
-    }
-  }
   )
-  return(tibble::tibble(eval_times=eval_times, surv=exp.surv))
+  return(tibble::tibble(eval_times = eval_times, surv = exp.surv))
 }
 
 
@@ -117,15 +122,17 @@ compute_survprob_pch <-
   function(patientsDF, eval_times, ratetable, rmap) {
     patientsDF <- tibble::as_tibble(patientsDF)
     patientsDF <- patientsDF %>%
-      tibble::add_column(SQVVcCs1lD4R7tDVlOoVrowid = row.names(patientsDF),
-                         .name_repair = "check_unique") # Use a random col name, this will throw an error in case the column already exists
+      tibble::add_column(
+        # Use a random col name, this will throw an error in case the column already exists
+        SQVVcCs1lD4R7tDVlOoVrowid = row.names(patientsDF),
+        .name_repair = "check_unique"
+      )
 
     if (purrr::is_scalar_character(eval_times)) {
       eval_times <-
         patientsDF[, eval_times] # this doesn't make sense at all! FIXME
       # I might have to evaluate it at that point then?
-    }
-    else if (is.numeric(eval_times)) {
+    } else if (is.numeric(eval_times)) {
       # Make sure it's not a date # FIXME
       # list of list of times or list of vectors, need to have an id column for this?
       if (length(eval_times) == 1) {
@@ -136,18 +143,21 @@ compute_survprob_pch <-
         old_cols <- colnames(patientsDF)
         for (t in eval_times) {
           patientsDF <-
-            patientsDF %>% tibble::add_column("SQVVcCs1lD4R7tDVlOoVeval_times{{t}}" :=
-                                                t,
-                                              .name_repair = "universal")
+            patientsDF %>% tibble::add_column(
+              "SQVVcCs1lD4R7tDVlOoVeval_times{{t}}" :=
+                t,
+              .name_repair = "universal"
+            )
         }
         patientsDF <-
-          patientsDF %>% tidyr::pivot_longer(-all_of(old_cols),
-                                             names_to = NULL ,
-                                             values_to = "SQVVcCs1lD4R7tDVlOoVeval_times")
+          patientsDF %>% tidyr::pivot_longer(
+            -tidyr::all_of(old_cols),
+            names_to = NULL,
+            values_to = "SQVVcCs1lD4R7tDVlOoVeval_times"
+          )
       }
 
-    }
-    else if (is.list(eval_times)) {
+    } else if (is.list(eval_times)) {
       is_num <- lapply(eval_times, is.numeric)
       lens <- lapply(eval_times, length)
       is_list <- lapply(eval_times, is.list)
