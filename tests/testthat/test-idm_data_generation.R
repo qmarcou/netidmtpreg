@@ -105,3 +105,75 @@ testthat::test_that("Test uncensored simplified exponential IDM data generation"
   testthat::expect_equal(nrow(idm_synth_data), n_ind)
   assertr::assert(idm_synth_data, assertr::in_set(TRUE, allow.na = FALSE), delta, delta1)
 })
+
+testthat::test_that("Test application of censoring times", {
+  iddata_df <- tibble::tibble(
+    Zt = c(1, 1, 2), # Zt>Tt cannot be observed in correct iddata
+    delta1 = 1, # Uncensored
+    Tt = c(2, 3, 3),
+    delta = 1 # Uncensored
+  )
+  iddata_df <- iddata_df %>% tibble::add_column(
+    id = seq.int(
+      from = 1,
+      to = length(iddata_df$Zt),
+      by = 1
+    ),
+    .before = 1
+  )
+
+  # Individual censoring times
+  censoring_times <- c(3, 2, 1)
+  expected_df <- tibble::tibble(
+    id = iddata_df$id,
+    Zt = c(1, 1, 1),
+    delta1 = c(1, 1, 0),
+    Tt = c(2, 2, 1),
+    delta = c(1, 0, 0),
+  )
+  testthat::expect_no_error(censored_iddata_df <-
+    apply_iddata_censoring(
+      iddata_df = iddata_df,
+      censoring_times = censoring_times
+    ))
+  # drop remaining attribute from DT conversion
+  # see: https://github.com/tidyverse/tibble/issues/1573#issuecomment-2042991264
+  attr(censored_iddata_df, ".internal.selfref") <- NULL
+  testthat::expect_equal(censored_iddata_df, expected_df)
+
+  # Common (administrative) censoring
+  expected_df <- tibble::tibble(
+    id = iddata_df$id,
+    Zt = c(1, 1, 1.5),
+    delta1 = c(1, 1, 0),
+    Tt = c(1.5, 1.5, 1.5),
+    delta = c(0, 0, 0),
+  )
+  testthat::expect_no_error(censored_iddata_df <-
+    apply_iddata_censoring(
+      iddata_df = iddata_df,
+      censoring_times = 1.5
+    ))
+  attr(censored_iddata_df, ".internal.selfref") <- NULL
+  testthat::expect_equal(censored_iddata_df, expected_df)
+
+  # Check that it fails with illfitted number of censoring times
+  iddata_df <- tibble::tibble(
+    Zt = c(1, 2, 3, 4), # Zt>Tt cannot be observed in correct iddata
+    delta1 = 1, # Uncensored
+    Tt = c(2, 3, 4, 5),
+    delta = 1 # Uncensored
+  )
+  iddata_df <- iddata_df %>% tibble::add_column(
+    id = seq.int(
+      from = 1,
+      to = length(iddata_df$Zt),
+      by = 1
+    ),
+    .before = 1
+  )
+  testthat::expect_error(apply_iddata_censoring(
+    iddata_df = iddata_df,
+    censoring_times = c(1, 2)
+  ))
+})

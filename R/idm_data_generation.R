@@ -130,3 +130,41 @@ generate_uncensored_ind_exp_idm_data <-
       )
     return(id_data)
   }
+
+#' Apply censoring times to an existing Illness-Death dataframe
+#'
+#' Update event times and censoring indicators according to the prescribed
+#' censoring time(s). Note that previous censoring information will be updated
+#' where newer censoring times are provided.
+#'
+#' @param iddata_df An Illness-Death dataframe in `iddata` format. @param
+#' censoring_times Censoring times.
+#'
+#' @return An iddata tibble with updated censoring times @examples
+apply_iddata_censoring <- function(
+    iddata_df,
+    censoring_times) {
+  # TODO Check that censoring time and iddata_df have same length
+
+  # Apply censoring
+  iddata_df <- data.table::as.data.table(iddata_df) %>%
+    tibble::add_column(SQVVcCs1lD4R7tDVlOoV_cens_times = censoring_times)
+  iddata_df[
+    SQVVcCs1lD4R7tDVlOoV_cens_times < Zt,
+    ":="(delta1 = 0, Zt = SQVVcCs1lD4R7tDVlOoV_cens_times)
+  ]
+  iddata_df[
+    SQVVcCs1lD4R7tDVlOoV_cens_times < Tt,
+    ":="(delta = 0, Tt = SQVVcCs1lD4R7tDVlOoV_cens_times)
+  ]
+  iddata_df <- tibble::as_tibble(iddata_df) %>%
+    dplyr::mutate(SQVVcCs1lD4R7tDVlOoV_cens_times = NULL)
+  return(iddata_df)
+}
+
+apply_iddata_death <- function(
+    iddata_df,
+    death_times
+){
+  
+}
