@@ -176,10 +176,10 @@ compute_survprob_pch <-
     }
     else{
       stop(
-        "`eval_times` must be a numeric vector, a numeric list, or a string designating the dataframe column to be used."
+        "`eval_times` must be a numeric vector, a numeric list, or a string 
+        designating the dataframe column to be used."
       )
     }
-
 
     # TODO eventually add array of arrays
     # TODO output a period object? (such that the output contains all the
@@ -199,38 +199,66 @@ compute_survprob_pch <-
       ))
 
     final_df <-
-      patientsDF %>% dplyr::select(SQVVcCs1lD4R7tDVlOoVrowid, SQVVcCs1lD4R7tDVlOoVeval_times) %>%
+      patientsDF %>%
+      dplyr::select(
+        SQVVcCs1lD4R7tDVlOoVrowid,
+        SQVVcCs1lD4R7tDVlOoVeval_times
+      ) %>%
       dplyr::mutate(expsurvs = exp.surv) %>%
-      dplyr::rename(row.name = SQVVcCs1lD4R7tDVlOoVrowid, eval_time = SQVVcCs1lD4R7tDVlOoVeval_times)
+      dplyr::rename(
+        row.name = SQVVcCs1lD4R7tDVlOoVrowid,
+        eval_time = SQVVcCs1lD4R7tDVlOoVeval_times
+      )
 
     return(final_df)
   }
 
-
-dftoRatetable<-function(lambda,data=popmortality_df,qty=c('survival','mortality','yearlyHaz','dailyHaz'),rmap){
+# FIXME unfinished and too application specific
+dftoRatetable <- function(
+    lambda,
+    data = popmortality_df,
+    qty = c("survival", "mortality", "yearlyHaz", "dailyHaz"),
+    rmap) {
   # mortality: mortality between two time points
   # survival: conditionnal probability of survival for the time interval
   # yearlyHaz: yearly hazard rate (cumulated hazard over a year)
   # dailyHaz: daily hazard (cumulated hazard over a day)
 
-  rmap['calendar_year'] # check that e
+  rmap["calendar_year"] # check that e
 
   # Create a ratetable containing dept information (this is incredibly and absurdly complicated)
   # adapted from: https://stackoverflow.com/questions/31064599/make-the-rate-table-for-relative-survival-analysis
-  dept_ratetable_list = list()
-  depts = levels(lifetable$dept)
-  for (dep in depts){
-    dept_ratetable_list = c(dept_ratetable_list,
-                            list(transrate(lifetable[sexe=="M" & dept==dep,.(agerev,annee,yearsurv=1-mua)]%>%tidyr::pivot_wider(id_cols=agerev,names_from = annee, values_from=yearsurv)%>%dplyr::select(!agerev)%>%as.matrix(),
-                                           lifetable[sexe=="F" & dept==dep,.(agerev,annee,yearsurv=1-mua)]%>%tidyr::pivot_wider(id_cols=agerev,names_from = annee, values_from=yearsurv)%>%dplyr::select(!agerev)%>%as.matrix(),
-                                           yearlim=c(lifetable[dept==dep,min(annee)],lifetable[,max(annee)]),
-                                           int.length=1))
+  dept_ratetable_list <- list()
+  depts <- levels(lifetable$dept)
+  for (dep in depts) {
+    dept_ratetable_list <- c(
+      dept_ratetable_list,
+      list(relsurv::transrate(
+        lifetable[
+          sexe == "M" & dept == dep,
+          .(agerev, annee, yearsurv = 1 - mua)
+        ] %>%
+          tidyr::pivot_wider(
+            id_cols = agerev,
+            names_from = annee,
+            values_from = yearsurv
+          ) %>%
+          dplyr::select(!agerev) %>% as.matrix(),
+        lifetable[
+          sexe == "F" & dept == dep,
+          .(agerev, annee, yearsurv = 1 - mua)
+        ] %>%
+          tidyr::pivot_wider(id_cols = agerev, names_from = annee, values_from = yearsurv) %>%
+          dplyr::select(!agerev) %>% as.matrix(),
+        yearlim = c(lifetable[dept == dep, min(annee)], lifetable[, max(annee)]),
+        int.length = 1
+      ))
     )
   }
   # TODO rewrite this not using transrate since transrate limits to evenly spread year intervals
-  names(dept_ratetable_list)<-depts
-  rt_lifetable = relsurv::joinrate(dept_ratetable_list,dim.name = "dept")
-
+  names(dept_ratetable_list) <- depts
+  rt_lifetable <- relsurv::joinrate(dept_ratetable_list, dim.name = "dept")
+  return(rt_lifetable)
 }
 
 # Proper alternative format to ratetable:
