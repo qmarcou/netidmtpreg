@@ -417,6 +417,20 @@ testthat::test_that("Test get_survival_at function", {
     0.0,
     survfit_df_2 %>% tibble::add_column(x = c("foo"))
   ))
+  # Test with survfit object
+  survfit_obj <- survival::survfit(
+    survival::Surv(c(1, 2, 3, 4), c(1, 1, 1, 1)) ~ 1
+  )
+  testthat::expect_equal(
+    get_survival_at(c(0, 1.5, 5), survfit_obj),
+    c(1.0, .75, .0)
+  )
+  # Test summary.survfit object
+  sum_survfit <- summary(survfit_obj)
+  testthat::expect_equal(
+    get_survival_at(c(0, 1.5, 5), survfit_obj),
+    c(1.0, .75, .0)
+  )
 })
 
 testthat::test_that("Test summarize_single_time_bootstraps", {

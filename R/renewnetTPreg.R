@@ -764,7 +764,8 @@ estimate_censoring_dist <-
 #' Estimated survival at time t from a survfit like df.
 #'
 #' @param t Single or vector numeric value $\geq$ 0.
-#' @param survfit_data_df Should contain at least columns `surv` and `time`.
+#' @param survfit_data A survfit, summary.survfit or data.frame object. If
+#'   data.frame, it should contain at least columns `surv` and `time`.
 #' @param safe boolean, Indicate whether to enable input argument checking,
 #'   default to TRUE.
 #'
@@ -772,25 +773,33 @@ estimate_censoring_dist <-
 #'
 #'
 #' @examples
-get_survival_at <- function(t, survfit_data_df, safe = TRUE) {
+get_survival_at <- function(t, survfit_data, safe = TRUE) {
   # Return the `surv` value for the row with greatest time lower than t using a step function
+  if(is(survfit_data,"survfit")) survfit_data <- summary(survfit_data)
+  if (is(survfit_data, "summary.survfit")) {
+    survfit_data <- tibble::tibble(
+      time = survfit_data$time,
+      surv = survfit_data$surv
+    ) %>%
+      tibble::add_row(time = 0.0, surv = 1.0, .before = 1)
+  }
   # Sanity checks
   if (safe) {
     assert_positive(t, "t", invalid_argument)
-    assertr::verify(survfit_data_df, assertr::has_all_names("time", "surv"), error_fun = invalid_argument("survfit_data_df", "contain both a `time` and `surv` column"))
-    assert_probability(survfit_data_df$surv, "survfit_data_df$surv", invalid_argument)
+    assertr::verify(survfit_data, assertr::has_all_names("time", "surv"), error_fun = invalid_argument("survfit_data", "contain both a `time` and `surv` column"))
+    assert_probability(survfit_data$surv, "survfit_data$surv", invalid_argument)
   }
 
   # Handle the no event case
-  if (nrow(survfit_data_df) == 1) {
-    if (all(t >= survfit_data_df$time[[1]])) {
+  if (nrow(survfit_data) == 1) {
+    if (all(t >= survfit_data$time[[1]])) {
       return(rep_len(1.0, length(t)))
     } else {
-      invalid_argument("survfit_data_df", "must contain several breakpoints or all `t` values must be greater than the provided time breakpoint")
+      invalid_argument("survfit_data", "must contain several breakpoints or all `t` values must be greater than the provided time breakpoint")
     }
   }
   # Normal case: use a stepfunc for efficient vectorised lookup
- surv_t <- stats::stepfun(x = survfit_data_df$time[-1], y = survfit_data_df$surv)
+ surv_t <- stats::stepfun(x = survfit_data$time[-1], y = survfit_data$surv)
 
   return(surv_t(t))
 }
