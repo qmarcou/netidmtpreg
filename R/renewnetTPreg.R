@@ -819,13 +819,17 @@ fit_single_time_point_estimate <-
     shorthand_fun = function(x) get_survival_at(x, cens_surv)
     if (transition == "11") {
       # FIXME implement data filtering based on state at time s
-      data_df[Zt > t, delta1 := 1]
+      # Construct \Delta^{1}_{t} = 1_{min(Z,t) \leq C} in Azarang 2017
+      # data_df==delta1 already implies Z \leq C, update indicator based on t
+      data_df[t <= Zt & delta1==0, delta1 := 1] 
       censor_surv_t = shorthand_fun(pmin(data_df$Zt, t))
       censor_indicators = data_df$delta1
     }
     else {
       # FIXME implement data filtering based on state at time s
-      data_df[Tt > t, delta := 1]
+      # \Delta_{t} = 1_{min(T,t) \leq C} in Azarang 2017, same reasoning as
+      # before
+      data_df[t <= Tt & delta==0, delta := 1] 
       censor_surv_t = shorthand_fun(pmin(data_df$Tt, t))
       censor_indicators = data_df$delta
     }
@@ -861,13 +865,17 @@ fit_single_time_point_estimate <-
 
     # Extract binary response
     y <- if(transition == "11"){
-      # TODO Check that censoring is correctly applied here
-      # I feel like because the event is an absence of one censoring time is not
-      # correctly applied
       data_df$Zt > t
     }
-    else {
-      stop("Transitions other than 11 not implemented")
+    else if(transition %in% c("13","23")){
+      data_df$Tt <= t
+    } else if(transition %in% c("12","22")) {
+      data_df$Zt <= t & data_df$Tt > t
+      # For "22" data_df$Zt <= t is already granted by the fact that s<t
+      # This is not computationnally efficient but reduces code duplication
+    } else
+    {
+      stop(glue::glue("Unknown transition '{transition}'"))
     }
 
     # Fit the GLM
