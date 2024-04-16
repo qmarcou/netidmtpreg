@@ -835,46 +835,38 @@ fit_single_time_point_estimate <-
     }
     censor_weights = censor_indicators / censor_surv_t
 
-    # Create link function and family objects taking into account background mortality
-    custom_link = if (transition %in% c('11', '12', '22')) {
-      eval(substitute( # Protect rmap non standard evaluation for survexp
-        rellogit(
+    # Create link function and family objects taking into account background
+    # mortality
+    custom_link_constructor = if (transition %in% c('11', '12', '22')) {
+        rellogit
+      }else {
+        offsetlogit
+      }
+
+    custom_link <- eval(substitute(
+        expr = custom_link_constructor(
           s = s,
           t = t,
           data_df = data_df,
           ratetable = ratetable,
-          rmap = rmapsub
+          rmap = rmapsub # Protect rmap non standard evaluation for survexp
         ),
-        list(rmapsub = substitute(rmap))
+        env = list(rmapsub = substitute(rmap))
       ))
-    }
-    else {
-      eval(substitute( # Protect rmap non standard evaluation for survexp
-        offsetlogit(
-          s = s,
-          t = t,
-          data_df = data_df,
-          ratetable = ratetable,
-          rmap = rmapsub
-        ),
-        list(rmapsub = substitute(rmap))
-      ))
-    }
+
     # TODO check whether the binomial variance should be adjusted too
     custom_family = binomial(link = custom_link)
 
     # Extract binary response
     y <- if(transition == "11"){
       data_df$Zt > t
-    }
-    else if(transition %in% c("13","23")){
+    } else if(transition %in% c("13","23")){
       data_df$Tt <= t
     } else if(transition %in% c("12","22")) {
       data_df$Zt <= t & data_df$Tt > t
       # For "22" data_df$Zt <= t is already granted by the fact that s<t
       # This is not computationnally efficient but reduces code duplication
-    } else
-    {
+    } else {
       stop(glue::glue("Unknown transition '{transition}'"))
     }
 
