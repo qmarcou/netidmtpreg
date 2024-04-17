@@ -2,35 +2,6 @@
 # Original Authors: Leyla Azarang and Manuel Oviedo de la Fuente
 # Adapted for net survival setting by Quentin Marcou, based on <ref>
 
-# a relative survival logit link function for 11,12,22 transitions
-# rellogit <- function(t) {
-#   SL= Survival(t)
-#   linkfun <- function(miu) log((miu/SL)/abs(1-(miu/SL)))
-#   linkinv <- function(et)  SL*exp(et)/(1+exp(et))
-#   mu.eta <- function(et) {SL*exp(et)/(1+exp(et))^2  }
-#   valideta <- function(et) TRUE
-#   link <- "log((miu/SL)/(1-(miu/SL)))"
-#   structure(list(linkfun = linkfun, linkinv = linkinv,
-#                  mu.eta = mu.eta, valideta = valideta,
-#                  name = link),
-#             class = "link-glm")
-# }
-#
-# # an offset survival logit link function for 13 and 23 transitions
-# offsetlogit <-function(t) {
-#   dp =1- Survival(t) #death probability
-#   SL = Survival(t)
-#   linkfun <- function(miu) log((miu-dp)/abs(1-(miu-dp)))
-#   linkinv <- function(et)  (exp(et)*SL+dp)/(1+exp(et))
-#   mu.eta <- function(et) {((2*SL-1)*exp(et))/((1+exp(et))^2) }
-#   valideta <- function(et) TRUE
-#   link <- "log((miu-dp)/(1-(miu-dp)))"
-#   structure(list(linkfun = linkfun, linkinv = linkinv,
-#                  mu.eta = mu.eta, valideta = valideta,
-#                  name = link),
-#             class = "link-glm")
-# }
-
 
 #' @title Wraps the call to mod.glm.fit to handle convergence errors
 #' @description
