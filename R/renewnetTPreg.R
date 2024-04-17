@@ -279,7 +279,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
   if(t <= s || s<0){
     stop("argument 's' must be smaller than 't' and larger than 0")
   }
-  else{
+
     # FIXME Why is this all contained in an "else" statement?
     if (!(link %in% c("logit", "probit", "cauchit")))
       stop( paste("binomial family do not have", "'", link, "'",  "link"))
@@ -287,43 +287,12 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
     if(sum(comdata$delta1 < comdata$delta) != 0){
       stop("'delta' must be 0 when 'delta1' is 0")
     }
-    if (!(trans %in% c("11", "12", "13","23","all")))
+    if (!(trans %in% c("11", "12", "13", "23", "all"))) {
       stop(paste(trans, "is not a valid transition for a progressive illness-death model"))
+    }
 
     if(s == 0 & (trans == "23" || trans == "all" )) # TODO there's probably better way around
       stop("for the transition '23' argument 's' must be larger than 0")
-    if (trans == "23" || trans == "all" ){
-      X2 <- X[comdata$Zt<=s & comdata$Tt>s , ,drop=FALSE] # patients in state 2 at time s
-      data2 <- comdata[comdata$Zt <= s & comdata$Tt > s,]
-      Sfit23 <- summary( survfit(Surv(data2$Tt, data2$delta == 0)~ +1))
-      Shat23 <- rbind(c(0,1),data.frame(time = Sfit23$time, surv = Sfit23$surv))
-      Shat.function23 <- function(x){
-	# A shitty function returning the last Shat$surv value known before time x
-        Shatx23 <- if(length(Shat23$time) > 1)  tail(subset(Shat23, time <= x)$surv,1)
-        else 1
-        return(Shatx23)
-      }
-    }
-    if (trans=="11" ||trans=="12" ||trans=="13" || trans=="all"){
-      X <- X[comdata$Zt > s, ,drop=FALSE] # FIXME rename to X1 in order to remain consistent with X2/data2/... and data1
-      data1 <- comdata[comdata$Zt > s,]
-      Sfit1 <- summary( survfit(Surv(data1$Zt, data1$delta1 == 0)~ +1))
-      Shat1 <- rbind(c(0,1), data.frame(time = Sfit1$time, surv = Sfit1$surv))
-      Shat.function1 <- function(x){
-	# A shitty function returning the last Shat$surv value known before time x
-	Shatx1 <- if(length(Shat1$time) > 1)  tail(subset(Shat1,time <= x)$surv, 1)
-        else 1
-        return(Shatx1)
-      }
-      Sfit <- summary( survfit(Surv(data1$Tt, data1$delta == 0)~ +1)) # Note delta==0 => means we are learning the censoring distribution here
-      Shat <- rbind(c(0,1), data.frame(time = Sfit$time, surv = Sfit$surv))
-      Shat.function <- function(x){
-	# A shitty function returning the last Shat$surv value known before time x
-        Shatx <- if(length(Shat$time) > 1)  tail(subset(Shat, time <=x )$surv, 1)
-        else 1
-        return(Shatx)
-      }
-    }
 
     co <- vector("list", 4)
     names(co) <- c("co11", "co12", "co13", "co23")
@@ -346,66 +315,62 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       stop("`time_dep_popvars` must be a list or vector of strings or NULL")
     }
 
+    if (trans == "all") {
+      transitions <- c("11", "12", "13", "23")
+    } else {
+      transitions <- c(trans)
+    }
 
-    # Shit part to compute expected survival
+    for (trans in transitions) {
+      # Select individuals at risk at time s
+      if (trans %in% c("11", "12", "13")) {
+        X_sub <- X[comdata$Zt > s, , drop = FALSE]
+        data_sub <- comdata[comdata$Zt > s, ]
+      } else {
+        # patients in state 2 at time s
+        X_sub <- X[comdata$Zt <= s & comdata$Tt > s, , drop = FALSE]
+        data_sub <- comdata[comdata$Zt <= s & comdata$Tt > s, ]
+        vec.t <- data_sub$Zt
+      }
 
-    # rellogit <- function(t,data_df) {
-    #   SL <- eval(substitute(compute_survprob_pch(data_df,t-s,ratetable,rmap=rmapsubs),list(rmapsubs=rmapsub)))$expsurvs
-    #   linkfun <- function(miu) log((miu/SL)/abs(1-(miu/SL)))
-    #   linkinv <- function(et)  SL*exp(et)/(1+exp(et))
-    #   mu.eta <- function(et) {SL*exp(et)/(1+exp(et))^2  }
-    #   valideta <- function(et) TRUE
-    #   link <- "log((miu/SL)/(1-(miu/SL)))"
-    #   structure(list(linkfun = linkfun, linkinv = linkinv,
-    #                  mu.eta = mu.eta, valideta = valideta,
-    #                  name = link),
-    #             class = "link-glm")
-    # }
-    #
-    # # an offset survival logit link function for 13 and 23 transitions
-    # offsetlogit <-function(t,data_df) {
-    #   SL <- eval(substitute(compute_survprob_pch(data_df,t-s,ratetable,rmap= rmapsubs),list(rmapsubs=rmapsub)))$expsurvs
-    #   dp <- 1- SL #death probability
-    #   linkfun <- function(miu) log((miu-dp)/(1-(miu-dp)))
-    #   linkinv <- function(et)  (exp(et)*SL+dp)/(1+exp(et))
-    #   mu.eta <- function(et) {((2*SL-1)*exp(et))/((1+exp(et))^2) }
-    #   valideta <- function(et) TRUE
-    #   link <- "log((miu-dp)/(1-(miu-dp)))"
-    #   structure(list(linkfun = linkfun, linkinv = linkinv,
-    #                  mu.eta = mu.eta, valideta = valideta,
-    #                  name = link),
-    #             class = "link-glm")
-    # }
+      # Define time steps for non parametric estimation
+      if (trans == "11") {
+        vec.t <- data_sub$Zt
+      } else if (trans == "12") {
+        index <- data_sub$Zt < data_sub$Tt
+        vec.t <- c(data_sub$Zt[index], data_sub$Tt[index])
+      } else {
+        vec.t <- data_sub$Tt
+      }
 
-# Look at the 1->1 transition
-    if (trans == "11" || trans == "all") {
-      print("Enter 11")
-      vec.t11 <- data1$Zt
-      M11 <- max(vec.t11)
-      vec.t11 <- vec.t11[order(vec.t11[vec.t11 > s])]# dafuq? #FIXME
+      Mt <- max(vec.t)
+      vec.t <- vec.t[order(vec.t[vec.t > s])] # dafuq? #FIXME
       # vec.t11 times are already guaranteed to be >s, since data1 contains only obs for Zt >s
-      vec.t11 <- vec.t11[vec.t11 <= t]
-      vec.t11 <- vec.t11[seq(1, length(vec.t11), by)]
-      vec.t11 <- c(vec.t11, t)
-      vec.t11 <- unique(vec.t11)
-      L.t11 <- length(vec.t11)
-      if (vec.t11[L.t11] >= M11)
+      vec.t <- vec.t[vec.t <= t]
+      vec.t <- vec.t[seq(1, length(vec.t), by)]
+      vec.t <- c(vec.t, t)
+      vec.t <- unique(vec.t)
+      L.t <- length(vec.t)
+      if (vec.t[L.t] >= Mt) {
         # FIXME why not just if(t>M11)
         stop(
-          "for the tansition '11' the effects can not be estimated for the given 't'(large 't' returns all responses equal to 0) "
+          glue::glue("Effects cannot be estimated for the transition '{trans}'
+          for the given 't={vec.t11[L.t11]}'(large 't' returns all responses
+          equal to 0) ")
         )
+      }
 
       # Compute point estimate
       print("estimate")
       coef_estimates <-
         eval(substitute( # Substitute rmap altered with s time shift
-          future.apply::future_lapply(vec.t11, function(x)
+          future.apply::future_lapply(vec.t, function(x)
             fit_single_time_point_estimate(
               s,
               t = x,
-              transition = "11",
-              X = X,
-              data_df = data1,
+              transition = trans,
+              X = X_sub,
+              data_df = data_sub,
               ratetable = ratetable,
               rmap = rmapsub
             )),
@@ -416,21 +381,21 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       coef_estimates <-
         coef_estimates %>%
         dplyr::bind_rows() %>%
-        tibble::add_column(t = vec.t11, .before = 1)
+        tibble::add_column(t = vec.t, .before = 1)
 
       # Compute bootstrap
       print("bootstrap")
       boot_summaries <-
         eval(substitute( # Substitute rmap altered with s time shift
       # use single worker apply here as multiworker is used for bootstrapping
-        lapply(vec.t11, function(x){
+        lapply(vec.t, function(x){
           compute_single_time_bootstraps( # Compute bootstraps estimates
             n_boot = R,
             s = s,
             t = x,
-            transition = "11",
-            X = X,
-            data_df = data1,
+            transition = trans,
+            X = X_sub,
+            data_df = data_sub,
             ratetable = ratetable,
             rmap = rmapsub
           ) %>% # and summarize them (estimate SD, CIs)
@@ -443,7 +408,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       boot_summaries <-
         boot_summaries %>%
         dplyr::bind_rows() %>%
-        tibble::add_column(t = vec.t11, .before = 1)
+        tibble::add_column(t = vec.t, .before = 1)
 
 
       # Combine point estimate and bootstrap information into a single tibble
@@ -479,9 +444,9 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       # Create returned object
       CO <-
         list(
-          transition = "11",
+          transition = trans,
           formula = formula,
-          time = vec.t11,
+          time = vec.t,
           coefficients = extract_stat_matrix("estimate"),
           SD = extract_stat_matrix("sd"),
           LWL = extract_stat_matrix("ci.lb"),
@@ -506,222 +471,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
         return(co)
       }
     }
-
-
-   # Look at the 1->2 (illness) transition
-    if(trans == "12" || trans == "all"){
-      index <- data1$Zt < data1$Tt
-      vec.t12 <- c(data1$Zt[index], data1$Tt[index])
-      # QUESTION why are we using both Zt and Tt here? Only Zt accounts for individual at risk of transition 1->2
-      M12 <- max(vec.t12)
-      vec.t12 <- vec.t12[order(vec.t12[vec.t12 > s])] #FIXME >s already guaranteed by data1 filtering
-      vec.t12 <- vec.t12[vec.t12 <= t]
-      vec.t12 <- vec.t12[seq(1, length(vec.t12), by)]
-      vec.t12 <- c(vec.t12, t)
-      vec.t12 <- unique(vec.t12)
-      L.t12 <- length(vec.t12)
-      if(vec.t12[L.t12] >= M12) stop(" for the tansition '12' the effects can not be estimated for the given 't', (large 't' returns all responses equal to 0)")
-      eta.list <- lapply( vec.t12, function(x){
-        jumptime <- x
-        res <- (data1$Zt <= jumptime & jumptime < data1$Tt)
-        delta_t <- ifelse(data1$Tt <= jumptime , data1$delta, 1)
-        hatG <- sapply(pmin(data1$Tt, jumptime), Shat.function)
-        wei <- delta_t/hatG
-
-
-        t=x
-        vv <- rellogit(t,data1)
-        family <- binomial(link = vv)
-        eta<-mod.glm.fit.callingwrapper( X, res, family = family, weights = wei,
-                                       warning_str = paste0(" for transition 1->2, s=",s," t=", jumptime), maxmaxit = 1000)
-        data1 <- data1
-        formula1 <- formula
-        X <- X
-
-	# Bootstrap
-        r <-
-          foreach(
-            j = 1:R,
-            .combine = rbind,
-            .errorhandling = "stop",
-            .inorder = FALSE
-          ) %dofuture% {
-            iboot <- sample(1:nrow(data1), replace=TRUE)
-          boot.data <- data1[iboot, ]
-          vv <- rellogit(t,boot.data)
-          family <- binomial(link = vv)
-
-          return(mod.glm.fit.callingwrapper(X[iboot, ,drop=FALSE],res[iboot],family=family,weights=wei[iboot],
-                                          warning_str = paste0(" on bootstrap sample ",j," for transition 1->2, s=",s," t=", jumptime),
-                                          maxmaxit = 1000))
-
-        }
-        boot.eta <- r
-        boot.sd <- apply(boot.eta, 2, sd, na.rm = FALSE)
-        return(list(eta=bind_rows(eta), sd=bind_rows(boot.sd)))
-      })
-      eta_list<-lapply(eta.list,function(x) x[["eta"]])
-      sd_list<-lapply(eta.list,function(x) x[["sd"]])
-      coef <- do.call("bind_rows", eta_list)
-      sd <- do.call("bind_rows", sd_list)
-
-      CO = list( transition = "12",formula=formula, time = vec.t12, coefficients = coef, SD = sd, LWL = coef - 1.96*sd,UPL=coef+1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
-      if(trans == "all"){
-        co$co12 = CO
-      }
-      else {
-        co <- list("co" = CO, call = match.call(),formula=formula, transition = trans, s = s, t = t, n.misobs = n.misobs)
-        class(co) = "TPreg"
-        return(co)
-      }
-    }
-
-    # Look at the 1->3 (direct death) transition
-    if(trans == "13" || trans == "all"){
-      vec.t13 <- data1$Tt
-      M13 <- max(vec.t13)
-      vec.t13 <- vec.t13[order(vec.t13[vec.t13 > s])]
-      vec.t13 <- vec.t13[vec.t13 <= t]
-      vec.t13 <- vec.t13[seq(1, length(vec.t13), by)]
-      vec.t13 <- c(vec.t13, t)
-      vec.t13 <- unique(vec.t13)
-      L.t13 <- length(vec.t13)
-      if(vec.t13[L.t13] >= M13) stop(" for the transition '13' the effects can not be estimated for the given 't', (large 't' returns all responses equal to 1) ")
-      eta.list <- lapply( vec.t13, function(x){
-        jumptime <- x
-        res <- (data1$Tt <= jumptime)
-        delta_t <- ifelse(data1$Tt <= jumptime , data1$delta, 1)
-        hatG <- sapply(pmin(data1$Tt, jumptime), Shat.function)
-        wei <- delta_t/hatG
-
-        t<-x
-        vv <- offsetlogit(t,data1)
-        family <- binomial(link = vv)
-
-
-        eta<-mod.glm.fit.callingwrapper( X, res, family = family, weights = wei,
-                                      warning_str = paste0(" for transition 1->3, s=",s," t=", jumptime), maxmaxit = 1000)
-        data1 <- data1
-        formula1 <- formula
-        X <- X
-	# Bootstrap
-        r <-
-          foreach(
-            j = 1:R,
-            .combine = rbind,
-            .errorhandling = "stop",
-            .inorder = FALSE
-          ) %dofuture% {
-            iboot <- sample(1:nrow(data1), replace=TRUE)
-          boot.data <- data1[iboot, ]
-          vv <- offsetlogit(t,boot.data)
-          family <- binomial(link = vv)
-
-          return(mod.glm.fit.callingwrapper(X[iboot, ,drop=FALSE], res[iboot], family = family, weights = wei[iboot],
-                                          warning_str = paste0(" on bootstrap sample ",j," for transition 1->3, s=",s," t=", jumptime),
-                                          maxmaxit = 1000))
-
-        }
-        #print(r)
-        boot.eta <- r
-        boot.sd <- apply(boot.eta, 2, sd, na.rm = FALSE) #this will return NA if any bootstrap sample did not contain any event
-        return(list(eta=bind_rows(eta), sd=bind_rows(boot.sd)))
-      })
-      eta_list<-lapply(eta.list,function(x) x[["eta"]])
-      sd_list<-lapply(eta.list,function(x) x[["sd"]])
-      coef <- do.call("bind_rows", eta_list)
-      sd <- do.call("bind_rows", sd_list)
-
-      CO <- list(transition = "13",formula=formula, time = vec.t13, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
-      if(trans == "all"){
-        co$co13 = CO
-      }
-      else {
-        co <- list("co" = CO, call = match.call(),formula=formula, transition = trans, s = s, t = t, n.misobs = n.misobs)
-        class(co) = "TPreg"
-        return(co)
-      }
-    }
-
-
-    # Look at the 2->3 (death after illness) transition
-    if(trans == "23" || trans == "all"){
-      vec.t23 <- data2$Tt
-      M23 <- max(vec.t23)
-      vec.t23 <- vec.t23[order(vec.t23[vec.t23 > s])]
-      vec.t23 <- vec.t23[vec.t23 <= t]
-      vec.t23 <- vec.t23[seq(1, length(vec.t23), by)]
-      vec.t23 <- c(vec.t23,t)
-      vec.t23 <- unique(vec.t23)
-      L.t23 <- length(vec.t23)
-      if(vec.t23[L.t23] >= M23) stop(" for the tansition '23' the effects can not be estimated for the given 't'(large 't' returns all responses equal to 1)")
-      eta.list <- lapply( vec.t23, function(x){
-        jumptime <- x
-        res <-(data2$Tt <= jumptime)
-        delta_t <- ifelse(data2$Tt <= jumptime, data2$delta, 1)
-        hatG <- sapply(pmin(data2$Tt, jumptime), Shat.function23)
-        wei <- delta_t/hatG
-
-        t<-x
-        vv <- offsetlogit(t,data2)
-        family <- binomial(link = vv)
-
-        eta<-mod.glm.fit.callingwrapper( X2, res, family = family, weights=wei,
-                                       warning_str = paste0(" for transition 2->3, s=",s," t=", jumptime), maxmaxit = 1000)
-        data2 <- data2
-        formula1 <- formula
-        X2 <- X2
-
-	#Bootstrap
-        r <-
-          foreach(
-            j = 1:R,
-            .combine = rbind,
-            .errorhandling = "stop",
-            .inorder = FALSE
-          ) %dofuture% {
-            iboot <- sample(1:nrow(data2), replace=TRUE)
-          boot.data <- data2[iboot, ]
-          vv <- offsetlogit(t,boot.data)
-          family <- binomial(link = vv)
-
-          return(mod.glm.fit.callingwrapper(X2[iboot, ,drop=FALSE], res[iboot], family = family, weights = wei[iboot],
-                                          warning_str = paste0(" on bootstrap sample ",j," for transition 1->3, s=",s," t=", jumptime),
-                                          maxmaxit = 1000))
-        }
-        boot.eta <- r
-        boot.sd <- apply(boot.eta,2, sd, na.rm = FALSE)
-        return(list(eta=bind_rows(eta), sd=bind_rows(boot.sd)))
-      })
-      eta_list<-lapply(eta.list,function(x) x[["eta"]])
-      sd_list<-lapply(eta.list,function(x) x[["sd"]])
-      coef <- do.call("bind_rows", eta_list)
-      sd <- do.call("bind_rows", sd_list)
-
-      CO <- list(transition = "23", formula=formula, time = vec.t23, coefficients = coef, SD = sd, LWL = coef - 1.96*sd, UPL = coef + 1.96*sd, p.value = 2*pnorm(-abs(as.matrix(coef/sd))))
-      if(trans == "all"){
-        co$co23=CO
-      }
-      else {
-        co <- list("co" = CO, call = match.call(),formula=formula, transition = trans, s = s, t = t, n.misobs=n.misobs)
-        class(co)="TPreg"
-        return(co)
-      }
-    }
-
-    # ? edit return object properties if "all"??
-    if(trans == "all"){
-      co$call = match.call()
-      co$formula = formula
-      co$transition = "all"
-      co$s = s
-      co$t = t
-      co$n.misobs = n.misobs
-      class(co) = "TPreg"
-      return(co)
-    }
   }
-}
 
 estimate_censoring_dist <-
   function(s, t, X, data_df, rhs_formula = NULL) {
@@ -806,12 +556,13 @@ get_survival_at <- function(t, survfit_data, safe = TRUE) {
 
 fit_single_time_point_estimate <-
   function(s, t, transition, X, data_df, ratetable, rmap) {
-    # Compute censoring weights
-    cens_surv = estimate_censoring_dist(s, t, X, data_df)
-
+    # Convert data_df to data.table for efficiency
     if (!data.table::is.data.table(data_df)) {
       data_df = data.table::as.data.table(data_df)
     }
+
+    # Compute censoring weights
+    cens_surv = estimate_censoring_dist(s, t, X, data_df)
 
     # Update censoring indicators based on considered time t
     censor_weights = NULL

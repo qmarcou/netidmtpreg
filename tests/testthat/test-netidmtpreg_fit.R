@@ -79,7 +79,7 @@ testthat::test_that("IDM crude survival model fitting runs", {
   # Check agreement with generating parameters
   expected_tp <- collections::dict()
   ## Check 11 transition estimates
-  expected_tp$set("11" , pexp(estimates[["11"]]$time - s_time,
+  expected_tp$set("11", pexp(estimates[["11"]]$time - s_time,
     rate = (l_illness + l_death),
     lower = FALSE # P(T>t)
   ))
@@ -121,8 +121,8 @@ testthat::test_that("IDM crude survival model fitting runs", {
     expected_coefs <- log(tp_val / (1 - tp_val))
 
     testthat::expect_equal(
-      estimates[[transition]]$coefficients,
-      expected_coefs,
+      object = estimates[[transition]]$coefficients,
+      expected = expected_coefs,
       tolerance = .01
     )
   }
@@ -160,7 +160,7 @@ testthat::test_that("IDM Net survival model fitting runs", {
     ))
   for(session_type in c("sequential", "multisession")){
     future::plan(session_type)
-    for (transition in c("11")) {
+    for (transition in c("all", "11", "12", "13", "23")) {
       renewnetTPreg(
         formula = ~1,
         synth_idm_data,
@@ -172,7 +172,7 @@ testthat::test_that("IDM Net survival model fitting runs", {
           year = start_date
         ),
         time_dep_popvars = list("age", "year"),
-        s = 0,
+        s = .5,
         t = 1.5,
         by = n_ind / 2,
         trans = transition,
