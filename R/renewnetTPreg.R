@@ -202,116 +202,119 @@ mod.glm.fit.callingwrapper <-
 
 
 renewnetTPreg <-
-function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age'), s = 0, t = NULL,R = 199, by = NULL, trans)
-{
-# Dictionnary of used variables:
-	# X: the model matrix, created from the data given the formula, model.matrix expands factors in dummy variables
-	# comdata: "complete" data (no NA in any column), columns are ordered in a certain way, TODO stop creating dumb variables (ordata,comdata) and just edit the data variable
-	# data: initially the whole data, then comdata subsets (data1, data2). Columns: Tt (\tifle(T),Zt(\tilde(Z)))
-	# 1/2 suffix: patients in state 1 or 2 at time s
-	# SfitXY: a Survfit object for the transition between state X and Y
-	# ShatXY: a dataframe containing survival estimate at different times (starting at time 0)
-	# SfitX: corresponds to ShatXX
-	# Sfit: global censoring distribution, with a really great name!
-       	# vec.tXY:
+  function(formula, data, ratetable, link, rmap, time_dep_popvars = list("year", "age"), s = 0, t = NULL, R = 199, by = NULL, trans) {
+    # Dictionnary of used variables:
+    # X: the model matrix, created from the data given the formula, model.matrix expands factors in dummy variables
+    # comdata: "complete" data (no NA in any column), columns are ordered in a certain way, TODO stop creating dumb variables (ordata,comdata) and just edit the data variable
+    # data: initially the whole data, then comdata subsets (data1, data2). Columns: Tt (\tifle(T),Zt(\tilde(Z)))
+    # 1/2 suffix: patients in state 1 or 2 at time s
+    # SfitXY: a Survfit object for the transition between state X and Y
+    # ShatXY: a dataframe containing survival estimate at different times (starting at time 0)
+    # SfitX: corresponds to ShatXX
+    # Sfit: global censoring distribution, with a really great name!
+    # vec.tXY:
 
-  if (missing(data))
-    stop("Argument 'data' is missing with no default")
-  if (!is.data.frame(data))
-    stop("Argument 'data' must be a data.frame")
-    if (sum(! c("id","Zt","Tt","delta1","delta", "age" ) %in% (colnames(data)))>0) # at least age should be included
-        stop("data should  contain  id, Zt, Tt, delta1, delta, age variables") # TODO later on add also "sex" covariable
-  if (ncol(data)<=4)
-    stop("'data' must have covariables")
-  if(sum(is.na(data))!=0){
-    miscolumn <- sapply(data, function(x) sum(is.na(x)))
-    miscolnam <- names(miscolumn[miscolumn!=0])
-    if(sum(miscolumn)!=0)
-      warning(sapply(miscolnam, function(x)paste(x," variable in 'data' has missing value(s)", ", ",sep="")))
-  }
+    if (missing(data)) {
+      stop("Argument 'data' is missing with no default")
+    }
+    if (!is.data.frame(data)) {
+      stop("Argument 'data' must be a data.frame")
+    }
+    if (sum(!c("id", "Zt", "Tt", "delta1", "delta", "age") %in% (colnames(data))) > 0) { # at least age should be included
+      stop("data should  contain  id, Zt, Tt, delta1, delta, age variables")
+    } # TODO later on add also "sex" covariable
+    if (ncol(data) <= 4) {
+      stop("'data' must have covariables")
+    }
+    if (sum(is.na(data)) != 0) {
+      miscolumn <- sapply(data, function(x) sum(is.na(x)))
+      miscolnam <- names(miscolumn[miscolumn != 0])
+      if (sum(miscolumn) != 0) {
+        warning(sapply(miscolnam, function(x) paste(x, " variable in 'data' has missing value(s)", ", ", sep = "")))
+      }
+    }
 
 
- # This piece of code seems to be used to make sure the formula and data columns match
- # It then builds a model.matrix object (which allows automatic expansion in dummy variables?)
- # Still I do not understand all this fiddling with getting the function call (espcially since there's no ... argument in the function)
- # why not use directly stats::model.frame(formula,data) ?
-  formula <- formula # wtf?
-  cl <- match.call() #get the function call (or ""command line"") string with named arguments
-  mf <- match.call(expand.dots = FALSE) # same without expending ... argument, the idea is to reuse the function call, and substitute the function by model.frame
-  m  <- match(c("formula", "data"), names(mf), 0L) # look for "formula" and "data" in arguments outside '...' and return their indices, return 0L (=0) if not found
-  mf <- mf[c(1L, m)]
-  # add options for model.frame()
-  mf$drop.unused.levels <- TRUE # simplify factors and retain only used levels
-  mf$na.action <- na.pass # all missing values will be retained in the model frame
-  mf[[1L]] <- quote(stats::model.frame)
-  mf <- eval(mf, parent.frame())
-  mt <- attr(mf, "terms")
-  if (is.empty.model(mt)) {
-    stop("'formula' must match with 'data'")
-  }
-  else{ #FIXME useless else since if is a stop
-    X<- model.matrix(mt, mf, contrasts)
-    ind = match(colnames(X) , colnames(data))
-  ind = ind[!is.na(ind)]
-  covname= colnames(data)[ind]
-  }
+    # This piece of code seems to be used to make sure the formula and data columns match
+    # It then builds a model.matrix object (which allows automatic expansion in dummy variables?)
+    # Still I do not understand all this fiddling with getting the function call (espcially since there's no ... argument in the function)
+    # why not use directly stats::model.frame(formula,data) ?
+    formula <- formula # wtf?
+    cl <- match.call() # get the function call (or ""command line"") string with named arguments
+    mf <- match.call(expand.dots = FALSE) # same without expending ... argument, the idea is to reuse the function call, and substitute the function by model.frame
+    m <- match(c("formula", "data"), names(mf), 0L) # look for "formula" and "data" in arguments outside '...' and return their indices, return 0L (=0) if not found
+    mf <- mf[c(1L, m)]
+    # add options for model.frame()
+    mf$drop.unused.levels <- TRUE # simplify factors and retain only used levels
+    mf$na.action <- na.pass # all missing values will be retained in the model frame
+    mf[[1L]] <- quote(stats::model.frame)
+    mf <- eval(mf, parent.frame())
+    mt <- attr(mf, "terms")
+    if (is.empty.model(mt)) {
+      stop("'formula' must match with 'data'")
+    } else { # FIXME useless else since if is a stop
+      X <- model.matrix(mt, mf, contrasts)
+      ind <- match(colnames(X), colnames(data))
+      ind <- ind[!is.na(ind)]
+      covname <- colnames(data)[ind]
+    }
 
-  # Filter useful columns based rmap and formula arguments
-  formnames<- all.vars(formula,functions = FALSE,unique = TRUE)
-  rmapnames<- all.vars(substitute(rmap),functions = FALSE,unique = TRUE)
-  ordata = data[, unique(c(c("id", "Zt", "Tt", "delta1", "delta"),rmapnames, formnames ),fromLast=FALSE)]
+    # Filter useful columns based rmap and formula arguments
+    formnames <- all.vars(formula, functions = FALSE, unique = TRUE)
+    rmapnames <- all.vars(substitute(rmap), functions = FALSE, unique = TRUE)
+    ordata <- data[, unique(c(c("id", "Zt", "Tt", "delta1", "delta"), rmapnames, formnames), fromLast = FALSE)]
 
-  L.or <- nrow(ordata)
-  #Remove lines with at least one missing value
-  comdata <- ordata[complete.cases(ordata),]
-  X<-X[complete.cases(ordata), ,drop=FALSE]
+    L.or <- nrow(ordata)
+    # Remove lines with at least one missing value
+    comdata <- ordata[complete.cases(ordata), ]
+    X <- X[complete.cases(ordata), , drop = FALSE]
 
-  L.com <- nrow(comdata)
-  n.misobs <- L.or - L.com
-  if(is.null(by)){
-    by <- floor((max(comdata$Zt) - min(comdata$Zt))/quantile(comdata$Zt,0.01))
-  }
+    L.com <- nrow(comdata)
+    n.misobs <- L.or - L.com
+    if (is.null(by)) {
+      by <- floor((max(comdata$Zt) - min(comdata$Zt)) / quantile(comdata$Zt, 0.01))
+    }
 
-  if(is.null(t)){
-    t = max(comdata$Zt[comdata$delta1 == 1], na.rm = T)
-  }
+    if (is.null(t)) {
+      t <- max(comdata$Zt[comdata$delta1 == 1], na.rm = T)
+    }
 
-  if(t <= s || s<0){
-    stop("argument 's' must be smaller than 't' and larger than 0")
-  }
+    if (t <= s || s < 0) {
+      stop("argument 's' must be smaller than 't' and larger than 0")
+    }
 
     # FIXME Why is this all contained in an "else" statement?
-    if (!(link %in% c("logit", "probit", "cauchit")))
-      stop( paste("binomial family do not have", "'", link, "'",  "link"))
+    if (!(link %in% c("logit", "probit", "cauchit"))) {
+      stop(paste("binomial family do not have", "'", link, "'", "link"))
+    }
 
-    if(sum(comdata$delta1 < comdata$delta) != 0){
+    if (sum(comdata$delta1 < comdata$delta) != 0) {
       stop("'delta' must be 0 when 'delta1' is 0")
     }
     if (!(trans %in% c("11", "12", "13", "23", "all"))) {
       stop(paste(trans, "is not a valid transition for a progressive illness-death model"))
     }
 
-    if(s == 0 & (trans == "23" || trans == "all" )) # TODO there's probably better way around
+    if (s == 0 & (trans == "23" || trans == "all")) { # TODO there's probably better way around
       stop("for the transition '23' argument 's' must be larger than 0")
+    }
 
     co <- vector("list", 4)
     names(co) <- c("co11", "co12", "co13", "co23")
 
     # Check correctness of time_dep_popvars and its interplay with rmap
-    rmapsub<-substitute(rmap)
-    if(is.list(time_dep_popvars) || is.character(time_dep_popvars)){
+    rmapsub <- substitute(rmap)
+    if (is.list(time_dep_popvars) || is.character(time_dep_popvars)) {
       # FIXME add check for list content being strings
-      if(!all(time_dep_popvars %in% names(rmapsub)[-1])){
+      if (!all(time_dep_popvars %in% names(rmapsub)[-1])) {
         stop("Names in `time_dep_popvars` do not correspond to ratetable dimension names in the `rmap` argument.")
       }
 
       # Now change rcall to account for s days time shift in survival computation
-      for (var in time_dep_popvars){
-        rmapsub[[var]]<-call('+',rmapsub[[var]],s)
+      for (var in time_dep_popvars) {
+        rmapsub[[var]] <- call("+", rmapsub[[var]], s)
       }
-
-    }
-    else if(!is.null(time_dep_popvars)){
+    } else if (!is.null(time_dep_popvars)) {
       stop("`time_dep_popvars` must be a list or vector of strings or NULL")
     }
 
@@ -364,7 +367,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       print("estimate")
       coef_estimates <-
         eval(substitute( # Substitute rmap altered with s time shift
-          future.apply::future_lapply(vec.t, function(x)
+          future.apply::future_lapply(vec.t, function(x) {
             fit_single_time_point_estimate(
               s,
               t = x,
@@ -373,7 +376,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
               data_df = data_sub,
               ratetable = ratetable,
               rmap = rmapsub
-            )),
+            )
+          }),
           list(rmapsub = substitute(rmapsub))
         ))
       # unlist the results into a single tibble instead of a list, add t
@@ -387,21 +391,21 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       print("bootstrap")
       boot_summaries <-
         eval(substitute( # Substitute rmap altered with s time shift
-      # use single worker apply here as multiworker is used for bootstrapping
-        lapply(vec.t, function(x){
-          compute_single_time_bootstraps( # Compute bootstraps estimates
-            n_boot = R,
-            s = s,
-            t = x,
-            transition = trans,
-            X = X_sub,
-            data_df = data_sub,
-            ratetable = ratetable,
-            rmap = rmapsub
-          ) %>% # and summarize them (estimate SD, CIs)
-            summarize_single_time_bootstraps()
-        }),
-        list(rmapsub = substitute(rmapsub))
+          # use single worker apply here as multiworker is used for bootstrapping
+          lapply(vec.t, function(x) {
+            compute_single_time_bootstraps( # Compute bootstraps estimates
+              n_boot = R,
+              s = s,
+              t = x,
+              transition = trans,
+              X = X_sub,
+              data_df = data_sub,
+              ratetable = ratetable,
+              rmap = rmapsub
+            ) %>% # and summarize them (estimate SD, CIs)
+              summarize_single_time_bootstraps()
+          }),
+          list(rmapsub = substitute(rmapsub))
         ))
       # unlist the results into a single tibble instead of a list, add t
       # information as first column
@@ -414,28 +418,36 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
       # Combine point estimate and bootstrap information into a single tibble
       ## Format tibble to get one line per time point and parameter
       boot_summaries <-
-        boot_summaries %>% tidyr::pivot_longer(
+        boot_summaries %>%
+        tidyr::pivot_longer(
           cols = !t,
           names_sep = "_",
           names_to = c("covariate", "statistic")
-        ) %>% tidyr::pivot_wider(names_from = "statistic", values_from = "value")
+        ) %>%
+        tidyr::pivot_wider(names_from = "statistic", values_from = "value")
       ## Same thing for the point estimates tibble
       coef_estimates <-
-        coef_estimates %>% tidyr::pivot_longer(cols = !t,
-                                               names_to = "covariate",
-                                               values_to = "estimate")
+        coef_estimates %>% tidyr::pivot_longer(
+          cols = !t,
+          names_to = "covariate",
+          values_to = "estimate"
+        )
       ## Join the resulting tables on time step and covariate name
-      results_df <- dplyr::full_join(x = coef_estimates, y = boot_summaries,
-                                     by = c("t", "covariate"))
+      results_df <- dplyr::full_join(
+        x = coef_estimates, y = boot_summaries,
+        by = c("t", "covariate")
+      )
       ## FIXME Retransform the result to existing format for temporary
       ## consistency with existing methods
-      extract_stat_matrix <- function(stat_name){
+      extract_stat_matrix <- function(stat_name) {
         ## define a closure for conciseness
         return(
           results_df %>%
             dplyr::select(t, covariate, {{ stat_name }}) %>%
-            tidyr::pivot_wider(names_from = "covariate",
-                               values_from = {{ stat_name }}) %>%
+            tidyr::pivot_wider(
+              names_from = "covariate",
+              values_from = {{ stat_name }}
+            ) %>%
             dplyr::select(!t) %>%
             as.matrix()
         )
@@ -454,9 +466,8 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
           n.failed.boot = NULL
         )
       if (trans == "all") {
-        co$co11 = CO
-      }
-      else {
+        co$co11 <- CO
+      } else {
         co <-
           list(
             "co" = CO,
@@ -467,7 +478,7 @@ function(formula, data, ratetable, link,rmap,time_dep_popvars=list('year','age')
             t = t,
             n.misobs = n.misobs
           )
-        class(co) = "TPreg"
+        class(co) <- "TPreg"
         return(co)
       }
     }
