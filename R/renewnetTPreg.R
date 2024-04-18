@@ -317,22 +317,21 @@ renewnetTPreg <-
         vec.t <- data_sub$Tt
       }
 
-      Mt <- max(vec.t)
-      vec.t <- vec.t[order(vec.t[vec.t > s])] # dafuq? #FIXME
-      # vec.t11 times are already guaranteed to be >s, since data1 contains only obs for Zt >s
-      vec.t <- vec.t[vec.t <= t]
-      vec.t <- vec.t[seq(1, length(vec.t), by)]
-      vec.t <- c(vec.t, t)
-      vec.t <- unique(vec.t)
-      L.t <- length(vec.t)
-      if (vec.t[L.t] >= Mt) {
-        # FIXME why not just if(t>M11)
+      # Assert whether meaningful results can be obtained at requested times
+      if (t > max(vec.t)) {
+        # FIXME handle censoring times in Zt
         stop(
           glue::glue("Effects cannot be estimated for the transition '{trans}'
-          for the given 't={vec.t11[L.t11]}'(large 't' returns all responses
-          equal to 0) ")
+          for the given 't={t}'(large 't' returns all responses
+          equal to 0). Last observed transition of interest at time 
+          {max(vec.t)}.")
         )
       }
+      # Order and subsample estimation times for the non-parametric setting
+      vec.t <- vec.t[vec.t < t]
+      vec.t <- vec.t %>% unique() %>% sort()
+      vec.t <- vec.t[seq(1, length(vec.t), by)]
+      vec.t <- c(vec.t, t)
 
       # Compute point estimate
       print("estimate")
