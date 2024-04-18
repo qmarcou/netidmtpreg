@@ -172,8 +172,47 @@ mod.glm.fit.callingwrapper <-
 
 
 
-renewnetTPreg <-
-  function(formula, data, ratetable, link, rmap, time_dep_popvars = list("year", "age"), s = 0, t = NULL, R = 199, by = NULL, trans) {
+
+#' Fit (net) survival Illness-Death transition probabilities
+#'
+#' Core function of the package, implementing a
+#'
+#' @param s DESCRIPTION.
+#' @param t DESCRIPTION.
+#' @param formula DESCRIPTION.
+#' @param ratetable DESCRIPTION.
+#' @param time_dep_popvars DESCRIPTION.
+#' @param rmap DESCRIPTION.
+#' @param data DESCRIPTION.
+#' @param link DESCRIPTION.
+#' @param R DESCRIPTION.
+#' @param by DESCRIPTION.
+#' @param trans DESCRIPTION.
+#'
+#' @return RETURN_DESCRIPTION
+#'
+#' @references
+#' Azarang, L., Scheike, T., & de Uña‐Álvarez, J. (2017). Direct modeling of
+#' regression effects for transition probabilities in the progressive
+#' illness–death model. **Statistics in Medicine**, 36(12), 1964-1976.
+#'
+#' Azarang L, Giorgi R. (2021). Estimation of covariate effects on net
+#' survivals in the relative survival progressive illness-death model.
+#' **Statistical Methods in Medical Research**, 30(6), 1538-1553.
+#' doi:10.1177/09622802211003608
+#' @examples
+#' # ADD_EXAMPLES_HERE
+renewnetTPreg <- function(s = 0,
+                          t = NULL,
+                          formula,
+                          ratetable,
+                          time_dep_popvars = list("year", "age"),
+                          rmap,
+                          data,
+                          link,
+                          R = 199,
+                          by = NULL,
+                          trans) {
     # Dictionnary of used variables:
     # X: the model matrix, created from the data given the formula, model.matrix expands factors in dummy variables
     # comdata: "complete" data (no NA in any column), columns are ordered in a certain way, TODO stop creating dumb variables (ordata,comdata) and just edit the data variable
@@ -323,7 +362,7 @@ renewnetTPreg <-
         stop(
           glue::glue("Effects cannot be estimated for the transition '{trans}'
           for the given 't={t}'(large 't' returns all responses
-          equal to 0). Last observed transition of interest at time 
+          equal to 0). Last observed transition of interest at time
           {max(vec.t)}.")
         )
       }
@@ -553,7 +592,7 @@ fit_single_time_point_estimate <-
       # FIXME implement data filtering based on state at time s
       # Construct \Delta^{1}_{t} = 1_{min(Z,t) \leq C} in Azarang 2017
       # data_df==delta1 already implies Z \leq C, update indicator based on t
-      data_df[t <= Zt & delta1==0, delta1 := 1] 
+      data_df[t <= Zt & delta1==0, delta1 := 1]
       censor_surv_t = shorthand_fun(pmin(data_df$Zt, t))
       censor_indicators = data_df$delta1
     }
@@ -561,7 +600,7 @@ fit_single_time_point_estimate <-
       # FIXME implement data filtering based on state at time s
       # \Delta_{t} = 1_{min(T,t) \leq C} in Azarang 2017, same reasoning as
       # before
-      data_df[t <= Tt & delta==0, delta := 1] 
+      data_df[t <= Tt & delta==0, delta := 1]
       censor_surv_t = shorthand_fun(pmin(data_df$Tt, t))
       censor_indicators = data_df$delta
     }
@@ -719,7 +758,7 @@ rellogit <- function(s, t, data_df, ratetable, rmap) {
 
 # an offset survival logit link function closure for 13 and 23 transitions
 offsetlogit <- function(s, t, data_df, ratetable, rmap) {
-  
+
   SL <- 1.0 # Allow for crude mortality model fitting
   if(!is.null(ratetable)){
       SL <-
