@@ -136,7 +136,7 @@ testthat::test_that("IDM crude survival regression gives correct
 
 devtools::dev_mode(on = TRUE)
 devtools::install_local()
-testthat::test_that("IDM Net survival model fitting runs", {
+testthat::test_that("IDM Net survival model fitting runs inside futures", {
   # Check that the model runs even with nonsense population information
   n_ind <- 1e4
   synth_idm_data <- generate_uncensored_ind_exp_idm_data(
@@ -182,7 +182,57 @@ testthat::test_that("IDM Net survival model fitting runs", {
     }
     future::plan(future::sequential)
   }
+})
+
+testthat::test_that("IDM Net survival fitting arguments handling", {
+  n_ind <- 1e4
+  synth_idm_data <- generate_uncensored_ind_exp_idm_data(
+    n_individuals = n_ind,
+    lambda_illness = 1.0,
+    lambda_death = 0.1
+  )
+  # Generate random age and sex labels
+  synth_idm_data <-
+    synth_idm_data %>% tibble::add_column(
+      sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
+      age = runif(n = n_ind, min = 50, max = 80)
+    )
+  # Generate random start of follow up dates
+  # FIXME a date before 1940 or after 2012 (limits of uspop ratetable) is
+  # extremely unlikely with these parameters but not impossible.
+  synth_idm_data <-
+    synth_idm_data %>% tibble::add_column(start_date = as.Date.numeric(
+      x = rnorm(n = n_ind, mean = 0, sd = 1e2),
+      origin = as.Date("15/06/1976", "%d/%m/%Y")
+    ))
+
+  # vector-like t with adjusted_t gives is estimated at expected times
+  t <- c(1.3, 1.4, 1.5)
+  estim <- renewnetTPreg(
+    s = .5,
+    t = t,
+    trans = "11",
+    formula = ~1,
+    data = synth_idm_data,
+    ratetable = NULL,
+    R = 2, # Number of bootstraps,
+    readjust_t = FALSE
+  )
+  testthat::expect_equal(object = estim$co$time, expected = t)
+  testthat::expect_error( # large t in unadjusted vector of times
+    estim <- renewnetTPreg(
+      s = .5,
+      t = c(t, 1e5),
+      trans = "11",
+      formula = ~1,
+      data = synth_idm_data,
+      ratetable = NULL,
+      R = 2, # Number of bootstraps,
+      readjust_t = FALSE
+    )
+  )
   testthat::skip("not implemented")
+  # trans = "all" returns all transitions
 })
 
 testthat::test_that("Estimated IDM Net survival and crude survival without

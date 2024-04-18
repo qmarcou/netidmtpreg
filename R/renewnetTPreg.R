@@ -178,7 +178,17 @@ mod.glm.fit.callingwrapper <-
 #' Core function of the package, implementing a
 #'
 #' @param s DESCRIPTION.
-#' @param t DESCRIPTION.
+#' @param t Times at which survival should be estimated, either `NULL`, scalar
+#' or vector of numerics. Default to NULL. If a scalar value is given, it will
+#' be interpreted as the maximum time at which survival shall be estimated
+#' using a non-parametric approach. If a vector or list-like object, the values
+#' will be interpreted as the list of times at which one whishes to get point
+#' estimations of survivals. By default estimation will be made at the time of
+#' last events before the requested times. This behavior can be altered by
+#' setting `readjust_t` to `FALSE`, mostly for testing purposes. If set to
+#' `NULL` (default) `t` is set as a scalar value to the last observed
+#' transition time.
+#' @param trans DESCRIPTION.
 #' @param formula DESCRIPTION.
 #' @param ratetable DESCRIPTION.
 #' @param time_dep_popvars DESCRIPTION.
@@ -187,7 +197,8 @@ mod.glm.fit.callingwrapper <-
 #' @param link DESCRIPTION.
 #' @param R DESCRIPTION.
 #' @param by DESCRIPTION.
-#' @param trans DESCRIPTION.
+#' @param readjust_t boolean, default `TRUE`. Whether to use exact `t` values
+#' (`FALSE`) or adjust t values to observed transition times (`TRUE`).  
 #'
 #' @return RETURN_DESCRIPTION
 #'
@@ -204,15 +215,16 @@ mod.glm.fit.callingwrapper <-
 #' # ADD_EXAMPLES_HERE
 renewnetTPreg <- function(s = 0,
                           t = NULL,
+                          trans,
                           formula,
                           ratetable,
-                          time_dep_popvars = list("year", "age"),
-                          rmap,
+                          time_dep_popvars = NULL,
+                          rmap = NULL,
                           data,
-                          link,
+                          link = "logit",
                           R = 199,
                           by = NULL,
-                          trans) {
+                          readjust_t = TRUE) {
     # Dictionnary of used variables:
     # X: the model matrix, created from the data given the formula, model.matrix expands factors in dummy variables
     # comdata: "complete" data (no NA in any column), columns are ordered in a certain way, TODO stop creating dumb variables (ordata,comdata) and just edit the data variable
@@ -289,7 +301,7 @@ renewnetTPreg <- function(s = 0,
       t <- max(comdata$Zt[comdata$delta1 == 1], na.rm = T)
     }
 
-    if (t <= s || s < 0) {
+    if (any(t <= s) || s < 0) {
       stop("argument 's' must be smaller than 't' and larger than 0")
     }
 
@@ -346,31 +358,45 @@ renewnetTPreg <- function(s = 0,
         vec.t <- data_sub$Zt
       }
 
-      # Define time steps for non parametric estimation
-      if (trans == "11") {
-        vec.t <- data_sub$Zt
-      } else if (trans == "12") {
-        index <- data_sub$Zt < data_sub$Tt
-        vec.t <- c(data_sub$Zt[index], data_sub$Tt[index])
-      } else {
-        vec.t <- data_sub$Tt
-      }
+        # Define time steps for non parametric estimation
+        if (trans == "11") {
+          vec.t <- data_sub$Zt
+        } else if (trans == "12") {
+          index <- data_sub$Zt < data_sub$Tt
+          vec.t <- c(data_sub$Zt[index], data_sub$Tt[index])
+        } else {
+          vec.t <- data_sub$Tt
+        }
 
-      # Assert whether meaningful results can be obtained at requested times
-      if (t > max(vec.t)) {
-        # FIXME handle censoring times in Zt
-        stop(
-          glue::glue("Effects cannot be estimated for the transition '{trans}'
-          for the given 't={t}'(large 't' returns all responses
-          equal to 0). Last observed transition of interest at time
-          {max(vec.t)}.")
-        )
+        # Assert whether meaningful results can be obtained at requested times
+        if (max(t) > max(vec.t)) {
+          # FIXME handle censoring times in Zt
+          stop(
+            glue::glue("Effects cannot be estimated for the transition '{trans}'
+            for the given 't={t}'(large 't' returns all responses
+            equal to 0). Last observed transition of interest at time
+            {max(vec.t)}.")
+          )
+        }
+
+      if (assertthat::is.scalar(t)) {
+        # Order and subsample estimation times for the non-parametric setting
+        vec.t <- vec.t[vec.t < t]
+        vec.t <- vec.t %>%
+          unique() %>%
+          sort()
+        vec.t <- vec.t[seq(1, length(vec.t), by)]
+        vec.t <- c(vec.t, t)
+      } else {
+        if (readjust_t) {
+          not_implemented("vector-like t with readjust_t=TRUE is not yet
+             implemented")
+          # 
+          vec.t <- NULL
+        } else {
+          vec.t <- as.numeric(t)
+        }
       }
-      # Order and subsample estimation times for the non-parametric setting
-      vec.t <- vec.t[vec.t < t]
-      vec.t <- vec.t %>% unique() %>% sort()
-      vec.t <- vec.t[seq(1, length(vec.t), by)]
-      vec.t <- c(vec.t, t)
 
       # Compute point estimate
       print("estimate")
