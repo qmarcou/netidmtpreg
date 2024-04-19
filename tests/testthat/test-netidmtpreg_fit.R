@@ -37,16 +37,14 @@ testthat::test_that("Test calling wrapper for mod.glm.fit.", {
 })
 
 # Crude survival testing
-testthat::test_that("IDM crude survival model fitting runs", {
+testthat::test_that("IDM crude survival model estimates", {
   # Test single dimensionnal model.matrix (e.g intercept only formula ~ 1)
   # Fixed by feb8378ef0a17d1aca30f2fda55ec57c77711e64
-  # TODO test crude mortality estimates correctness
-  #testthat::skip("not implemented")
   # Crude mortality binomial regression
   n_ind <- 1e4
   l_illness <- 1.0
   l_death <- 0.1
-  s_time <- 0
+  s_time <- 0.5
   synth_idm_data <- generate_uncensored_ind_exp_idm_data(
     n_individuals = n_ind,
     lambda_illness = l_illness,
@@ -60,8 +58,7 @@ testthat::test_that("IDM crude survival model fitting runs", {
       age = runif(n = n_ind, min = 50, max = 80)
     )
   estimates <- list()
-  for (transition in c("11")) {
-  # for (transition in c("all", "11", "12", "22", "13", "23")) {
+  for (transition in c("11", "12", "13", "23")) {
     estimates[transition] <- 
     renewnetTPreg(~1, synth_idm_data,
       ratetable = NULL,
@@ -69,7 +66,7 @@ testthat::test_that("IDM crude survival model fitting runs", {
       time_dep_popvars = NULL,
       s = s_time,
       t = 1.5,
-      by = n_ind / 2,
+      by = n_ind / 10,
       trans = transition,
       link = "logit",
       R = 1 # Number of bootstraps
@@ -115,14 +112,12 @@ testthat::test_that("IDM crude survival model fitting runs", {
     lower = FALSE # P(T<t)
   ))
 
-  for (transition in c("11")) {
-    # for (transition in c("all", "11", "12", "22", "13", "23")) {
+  for (transition in c("11", "12", "13", "23")) {
     tp_val <- expected_tp$get(transition)
-    expected_coefs <- log(tp_val / (1 - tp_val))
 
     testthat::expect_equal(
-      object = estimates[[transition]]$coefficients,
-      expected = expected_coefs,
+      object = as.numeric(expit(estimates[[!!transition]]$coefficients)),
+      expected = tp_val,
       tolerance = .01
     )
   }
