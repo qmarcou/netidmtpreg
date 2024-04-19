@@ -86,15 +86,15 @@ testthat::test_that("IDM crude survival model estimates", {
   # therefore state 2 does not influence 13 transition
   expected_tp$set("13", pexp(estimates[["13"]]$time - s_time,
     rate = l_death,
-    lower = TRUE # P(T<t)
+    lower = TRUE # P(T<=t)
   ))
 
   ## Check 12 transition estimates: 12 transition and no death
-  p_illness <- pexp(estimates[["11"]]$time - s_time,
+  p_illness <- pexp(estimates[["12"]]$time - s_time,
     rate = l_illness,
-    lower = TRUE # P(T>t)
+    lower = TRUE # P(T<=t)
   )
-  p_no_death <-   p_illness <- pexp(estimates[["11"]]$time - s_time,
+  p_no_death <- pexp(estimates[["12"]]$time - s_time,
     rate = l_death,
     lower = FALSE # P(T>t)
   )
@@ -103,7 +103,7 @@ testthat::test_that("IDM crude survival model estimates", {
   ## Check 23 transition estimates
   expected_tp$set("23", pexp(estimates[["23"]]$time - s_time,
     rate = l_death,
-    lower = TRUE # P(T<t)
+    lower = TRUE # P(T<=t)
   ))
 
   ## Check 22 transition estimates: survival probability
