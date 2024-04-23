@@ -118,7 +118,7 @@ testthat::test_that("IDM crude survival model estimates", {
     testthat::expect_equal(
       object = as.numeric(expit(estimates[[!!transition]]$coefficients)),
       expected = tp_val,
-      tolerance = .05 # ~5% relative difference tolerance 
+      tolerance = .05 # ~5% relative difference tolerance
     )
   }
 })
@@ -234,10 +234,12 @@ population mortality are equal",
   {
     # Check that the model runs even with nonsense population information
     n_ind <- 1e5
-    l_illness <- 1.0
-    l_death <- 1.0
-    l_pop_death <- 1.0
-    s_time <- 0
+    common_event_rate <- .5
+    l_illness <- common_event_rate
+    l_death <- common_event_rate
+    l_pop_death <- common_event_rate
+    s_time <- 0.5
+    t_times <- c(.7, 1.0, 1.2, 1.5)
     synth_idm_data <- generate_uncensored_ind_exp_idm_data(
       n_individuals = n_ind,
       lambda_illness = l_illness,
@@ -272,26 +274,26 @@ population mortality are equal",
       population_death_times
     )
 
-    for (transition in c("11")) {
-      # FIXME: need to align times
-      # net_truth <- renewnetTPreg(
-      #   formula = ~1,
-      #   synth_idm_data,
-      #   # Use a standard ratetable
-      #   ratetable = NULL,
-      #   rmap = list(
-      #     age = age,
-      #     sex = sex,
-      #     year = start_date
-      #   ),
-      #   time_dep_popvars = list("age", "year"),
-      #   s = 0,
-      #   t = 1.5,
-      #   by = n_ind / 2,
-      #   trans = transition,
-      #   link = "logit",
-      #   R = 1 # Number of bootstraps
-      # )
+    for (transition in c("11", "12", "13", "23")) {
+      net_truth <- renewnetTPreg(
+        formula = ~1,
+        synth_idm_data,
+        # Use a standard ratetable
+        ratetable = NULL,
+        rmap = list(
+          age = age,
+          sex = sex,
+          year = start_date
+        ),
+        time_dep_popvars = list("age", "year"),
+        s = s_time,
+        t = t_times,
+        readjust_t = FALSE,
+        trans = transition,
+        link = "logit",
+        R = 1 # Number of bootstraps
+      )
+
       net_estimated <- renewnetTPreg(
         formula = ~1,
         crude_synth_idm_data,
@@ -303,32 +305,27 @@ population mortality are equal",
           year = start_date
         ),
         time_dep_popvars = list("age", "year"),
-        s = 0,
-        t = 1.5,
-        by = n_ind / 2,
+        s = s_time,
+        t = net_truth$co$time,
+        readjust_t = FALSE,
         trans = transition,
         link = "logit",
         R = 1 # Number of bootstraps
       )
-      # FIXME: this cannot work, times are not aligned
-      # testthat::expect_equal(
-      #   object = net_estimated$co$coefficients,
-      #   expected = net_truth$co$coefficients,
-      #   tolerance = .01
-      # )
+
       # Compute expected coefficients using survfit
-      net_survfit <- survival::survfit(
-        survival::Surv(time = pmin(Zt, Tt), event = delta) ~ 1,
-        data = synth_idm_data
-      )
-      net_surv_probs <- get_survival_at(net_estimated$co$time, net_survfit)
+      # net_survfit <- survival::survfit(
+      #   survival::Surv(time = pmin(Zt, Tt), event = delta) ~ 1,
+      #   data = synth_idm_data
+      # )
+      # net_surv_probs <- get_survival_at(net_estimated$co$time, net_survfit)
       # net_surv_probs <- pexp(net_estimated$co$time,
       #     rate = (l_illness + l_death),
       #     lower = FALSE # P(T>t)
       #   )
       testthat::expect_equal(
         object = as.numeric(expit(net_estimated$co$coefficients)),
-        expected = net_surv_probs,
+        expected = as.numeric(expit(net_truth$co$coefficients)),
         tolerance = .01
       )
     }
