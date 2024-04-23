@@ -38,7 +38,7 @@ testthat::test_that("Test calling wrapper for mod.glm.fit.", {
 
 # Crude survival testing
 testthat::test_that("IDM crude survival model estimates", {
-  # Test single dimensionnal model.matrix (e.g intercept only formula ~ 1)
+  # Test single dimensional model.matrix (e.g intercept only formula ~ 1)
   # Fixed by feb8378ef0a17d1aca30f2fda55ec57c77711e64
   # Crude mortality binomial regression
   set.seed(246852389)
@@ -125,7 +125,7 @@ testthat::test_that("IDM crude survival model estimates", {
 })
 
 testthat::test_that("IDM crude survival regression gives correct
-                      estimates in absence of covariates and censoring 
+                      estimates in absence of covariate and censoring 
                       and exponentially distributed events", {
 
                       })
@@ -154,7 +154,7 @@ testthat::test_that("IDM Net survival model fitting runs inside futures", {
       x = rnorm(n = n_ind, mean = 0, sd = 1e2),
       origin = as.Date("15/06/1976", "%d/%m/%Y")
     ))
-  for(session_type in c("sequential", "multisession")){
+  for (session_type in c("sequential", "multisession")){
     future::plan(session_type)
     for (transition in c("all", "11", "12", "13", "23")) {
       renewnetTPreg(
@@ -231,112 +231,115 @@ testthat::test_that("IDM Net survival fitting arguments handling", {
   # trans = "all" returns all transitions
 })
 
-testthat::test_that("Estimated IDM Net survival and crude survival without
-population mortality are equal", {
-  # Check that the model runs even with nonsense population information
-  n_ind <- 1e5
-  l_illness <- 1.0
-  l_death <- 1.0
-  l_pop_death <- 1.0
-  s_time <- 0
-  synth_idm_data <- generate_uncensored_ind_exp_idm_data(
-    n_individuals = n_ind,
-    lambda_illness = l_illness,
-    lambda_death = l_death
-  )
-  # Generate random age and sex labels
-  synth_idm_data <-
-    synth_idm_data %>% tibble::add_column(
-      sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
-      age = runif(n = n_ind, min = 50, max = 80)
+testthat::test_that(
+  "Estimated IDM Net survival and crude survival without
+population mortality are equal",
+  {
+    # Check that the model runs even with nonsense population information
+    n_ind <- 1e5
+    l_illness <- 1.0
+    l_death <- 1.0
+    l_pop_death <- 1.0
+    s_time <- 0
+    synth_idm_data <- generate_uncensored_ind_exp_idm_data(
+      n_individuals = n_ind,
+      lambda_illness = l_illness,
+      lambda_death = l_death
     )
-  # Generate random start of follow up dates
-  # FIXME a date before 1940 or after 2012 (limits of uspop ratetable) is
-  # extremely unlikely with these parameters but not impossible.
-  synth_idm_data <-
-    synth_idm_data %>% tibble::add_column(start_date = as.Date.numeric(
-      x = rnorm(n = n_ind, mean = 0, sd = 1e2),
-      origin = as.Date("15/06/1976", "%d/%m/%Y")
-    ))
+    # Generate random age and sex labels
+    synth_idm_data <-
+      synth_idm_data %>% tibble::add_column(
+        sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
+        age = runif(n = n_ind, min = 50, max = 80)
+      )
+    # Generate random start of follow up dates
+    # FIXME a date before 1940 or after 2012 (limits of uspop ratetable) is
+    # extremely unlikely with these parameters but not impossible.
+    synth_idm_data <-
+      synth_idm_data %>% tibble::add_column(start_date = as.Date.numeric(
+        x = rnorm(n = n_ind, mean = 0, sd = 1e2),
+        origin = as.Date("15/06/1976", "%d/%m/%Y")
+      ))
 
-  # Generate population mortality assuming equal constant population rate
-  population_death_times <- generate_exponential_time_to_event(
-    n_individuals = n_ind,
-    lambda = l_pop_death
-  )
-  # create a corresponding ratetable object
-  const_ratetable <- survival::survexp.us
-  const_ratetable[] <- l_pop_death
-  # Update death time accordingly to create an observed crude survival dataset
-  crude_synth_idm_data <- apply_iddata_death(
-    synth_idm_data,
-    population_death_times
-  )
+    # Generate population mortality assuming equal constant population rate
+    population_death_times <- generate_exponential_time_to_event(
+      n_individuals = n_ind,
+      lambda = l_pop_death
+    )
+    # create a corresponding ratetable object
+    const_ratetable <- survival::survexp.us
+    const_ratetable[] <- l_pop_death
+    # Update death time accordingly to create an observed crude survival dataset
+    crude_synth_idm_data <- apply_iddata_death(
+      synth_idm_data,
+      population_death_times
+    )
 
-  for (transition in c("11")) {
-    # FIXME: need to align times
-    # net_truth <- renewnetTPreg(
-    #   formula = ~1,
-    #   synth_idm_data,
-    #   # Use a standard ratetable
-    #   ratetable = NULL,
-    #   rmap = list(
-    #     age = age,
-    #     sex = sex,
-    #     year = start_date
-    #   ),
-    #   time_dep_popvars = list("age", "year"),
-    #   s = 0,
-    #   t = 1.5,
-    #   by = n_ind / 2,
-    #   trans = transition,
-    #   link = "logit",
-    #   R = 1 # Number of bootstraps
-    # )
-    net_estimated <- renewnetTPreg(
-      formula = ~1,
-      crude_synth_idm_data,
-      # Use a standard ratetable
-      ratetable = const_ratetable,
-      rmap = list(
-        age = age,
-        sex = sex,
-        year = start_date
-      ),
-      time_dep_popvars = list("age", "year"),
-      s = 0,
-      t = 1.5,
-      by = n_ind / 2,
-      trans = transition,
-      link = "logit",
-      R = 1 # Number of bootstraps
-    )
-    # FIXME: this cannot work, times are not aligned 
-    # testthat::expect_equal(
-    #   object = net_estimated$co$coefficients,
-    #   expected = net_truth$co$coefficients,
-    #   tolerance = .01
-    # )
-    # Compute expected coefficients using survfit
-    net_survfit <- survival::survfit(
-      survival::Surv(time = pmin(Zt, Tt), event = delta) ~ 1,
-      data = synth_idm_data
-    )
-    net_surv_probs <- get_survival_at(net_estimated$co$time, net_survfit)
-    # net_surv_probs <- pexp(net_estimated$co$time,
-    #     rate = (l_illness + l_death),
-    #     lower = FALSE # P(T>t)
-    #   )
-    testthat::expect_equal(
-      object = net_estimated$co$coefficients,
-      expected = log(net_surv_probs / (1 - net_surv_probs)),
-      tolerance = .01
-    )
+    for (transition in c("11")) {
+      # FIXME: need to align times
+      # net_truth <- renewnetTPreg(
+      #   formula = ~1,
+      #   synth_idm_data,
+      #   # Use a standard ratetable
+      #   ratetable = NULL,
+      #   rmap = list(
+      #     age = age,
+      #     sex = sex,
+      #     year = start_date
+      #   ),
+      #   time_dep_popvars = list("age", "year"),
+      #   s = 0,
+      #   t = 1.5,
+      #   by = n_ind / 2,
+      #   trans = transition,
+      #   link = "logit",
+      #   R = 1 # Number of bootstraps
+      # )
+      net_estimated <- renewnetTPreg(
+        formula = ~1,
+        crude_synth_idm_data,
+        # Use a standard ratetable
+        ratetable = const_ratetable,
+        rmap = list(
+          age = age,
+          sex = sex,
+          year = start_date
+        ),
+        time_dep_popvars = list("age", "year"),
+        s = 0,
+        t = 1.5,
+        by = n_ind / 2,
+        trans = transition,
+        link = "logit",
+        R = 1 # Number of bootstraps
+      )
+      # FIXME: this cannot work, times are not aligned
+      # testthat::expect_equal(
+      #   object = net_estimated$co$coefficients,
+      #   expected = net_truth$co$coefficients,
+      #   tolerance = .01
+      # )
+      # Compute expected coefficients using survfit
+      net_survfit <- survival::survfit(
+        survival::Surv(time = pmin(Zt, Tt), event = delta) ~ 1,
+        data = synth_idm_data
+      )
+      net_surv_probs <- get_survival_at(net_estimated$co$time, net_survfit)
+      # net_surv_probs <- pexp(net_estimated$co$time,
+      #     rate = (l_illness + l_death),
+      #     lower = FALSE # P(T>t)
+      #   )
+      testthat::expect_equal(
+        object = net_estimated$co$coefficients,
+        expected = log(net_surv_probs / (1 - net_surv_probs)),
+        tolerance = .01
+      )
+    }
+
+    testthat::skip("not implemented")
+    # Generate population death times using a ratetable
   }
-
-  testthat::skip("not implemented")
-  # Generate population death times using a ratetable
-})
+)
 
 testthat::test_that("Test single time point estimation", {
   # TODO alleviate code duplication?
@@ -426,7 +429,7 @@ testthat::test_that("Test get_survival_at function", {
   testthat::expect_equal(.20, shorthand_fun(6.0))
   testthat::expect_equal(.20, shorthand_fun(7.0))
 
-  # Test vectorised input
+  # Test vectorized input
   testthat::expect_equal(
     c(1.0, 1.0, .75, .75, .4, .20, .20),
     shorthand_fun(c(0.0, .5, 2.0, 3.0 - 1e-5, 5, 6.0, 7.0))
@@ -434,8 +437,14 @@ testthat::test_that("Test get_survival_at function", {
 
   # Test edge cases
   ## slightly negative value
-  testthat::expect_error(shorthand_fun(-1e-10), class = "invalid_argument_error")
-  testthat::expect_error(shorthand_fun(c(1, 2, 3, -1e-10, 5, 6)), class = "invalid_argument_error")
+  testthat::expect_error(
+    shorthand_fun(-1e-10),
+    class = "invalid_argument_error"
+  )
+  testthat::expect_error(
+    shorthand_fun(c(1, 2, 3, -1e-10, 5, 6)),
+    class = "invalid_argument_error"
+  )
   ## Infinite positive value
   testthat::expect_equal(.20, shorthand_fun(Inf))
   ## Single breakpoint survfit_df
@@ -445,27 +454,42 @@ testthat::test_that("Test get_survival_at function", {
   )
   shorthand_fun_2 <- function(x) get_survival_at(x, survfit_df_2)
   testthat::expect_equal(c(1.0, 1.0, 1.0), shorthand_fun_2(c(0, 1, Inf)))
-  testthat::expect_error(shorthand_fun_2(-1e-10), class = "invalid_argument_error")
-  testthat::expect_error(shorthand_fun_2(c(-1e-10, 1)), class = "invalid_argument_error")
+  testthat::expect_error(
+    shorthand_fun_2(-1e-10),
+    class = "invalid_argument_error"
+  )
+  testthat::expect_error(
+    shorthand_fun_2(c(-1e-10, 1)),
+    class = "invalid_argument_error"
+  )
   survfit_df_3 <- tibble::tibble(
     time = c(1.0), # not defined on 0.0 this time
     surv = c(1.0)
   )
   shorthand_fun_3 <- function(x) get_survival_at(x, survfit_df_3)
   testthat::expect_equal(c(1.0, 1.0), shorthand_fun_3(c(1, Inf)))
-  testthat::expect_error(shorthand_fun_3(1 - 1e-10), class = "invalid_argument_error")
+  testthat::expect_error(
+    shorthand_fun_3(1 - 1e-10),
+    class = "invalid_argument_error"
+  )
   # survival probability greater than 1
   survfit_df_4 <- tibble::tibble(
     time = c(0, 1),
     surv = c(1.1, .85)
   )
-  testthat::expect_error(get_survival_at(0.0, survfit_df_4), class = "invalid_argument_error")
+  testthat::expect_error(
+    get_survival_at(0.0, survfit_df_4),
+    class = "invalid_argument_error"
+  )
   # negative survival probability
   survfit_df_5 <- tibble::tibble(
     time = c(0, 1),
     surv = c(1.0, -1e-5)
   )
-  testthat::expect_error(get_survival_at(0.0, survfit_df_5), class = "invalid_argument_error")
+  testthat::expect_error(
+    get_survival_at(0.0, survfit_df_5),
+    class = "invalid_argument_error"
+  )
   # Missing columns
   testthat::expect_error(get_survival_at(
     0.0,
@@ -500,7 +524,9 @@ testthat::test_that("Test summarize_single_time_bootstraps", {
   mock_boot_df <-
     tibble::tibble("(Intercept)" = rnorm(1e5,mean = 1, sd = 1),
                    "X1" = rnorm(1e5, mean = 0, sd = 1))
-  testthat::expect_no_error(boot_summary <- summarize_single_time_bootstraps(mock_boot_df))
+  testthat::expect_no_error(
+    boot_summary <- summarize_single_time_bootstraps(mock_boot_df)
+  )
   assertr::verify(
     boot_summary,
     assertr::has_only_names(
