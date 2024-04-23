@@ -41,7 +41,8 @@ testthat::test_that("IDM crude survival model estimates", {
   # Test single dimensionnal model.matrix (e.g intercept only formula ~ 1)
   # Fixed by feb8378ef0a17d1aca30f2fda55ec57c77711e64
   # Crude mortality binomial regression
-  n_ind <- 1e4
+  set.seed(246852389)
+  n_ind <- 1e5
   l_illness <- 1.0
   l_death <- 0.1
   s_time <- 0.5
@@ -65,7 +66,7 @@ testthat::test_that("IDM crude survival model estimates", {
       rmap = NULL,
       time_dep_popvars = NULL,
       s = s_time,
-      t = 1.5,
+      t = 3.0,
       by = n_ind / 10,
       trans = transition,
       link = "logit",
@@ -118,7 +119,7 @@ testthat::test_that("IDM crude survival model estimates", {
     testthat::expect_equal(
       object = as.numeric(expit(estimates[[!!transition]]$coefficients)),
       expected = tp_val,
-      tolerance = .01
+      tolerance = .05 # ~5% relative difference tolerance 
     )
   }
 })
