@@ -14,10 +14,7 @@ License: GPL (>= 2)
 URL: https://github.com/qmarcou/netidmtpreg
 BugReports: https://github.com/qmarcou/netidmtpreg/issues
 Depends: 
-    doParallel,
-    foreach,
-    R (>= 3.4.0),
-    survival
+    R (>= 3.4.0)
 Imports:
     assertr,
     assertthat,
@@ -31,6 +28,7 @@ Imports:
     relsurv,
     rlang,
     stats,
+    survival,
     tibble,
     tidyr,
     tryCatchLog,
