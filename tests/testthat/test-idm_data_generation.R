@@ -1,4 +1,3 @@
-devtools::load_all()
 testthat::test_that("Homogeneous Poisson count process generation works", {
   n_ind = 1000
   lambda = .25

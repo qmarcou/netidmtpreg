@@ -1,4 +1,3 @@
-devtools::load_all()
 testthat::test_that("Test convergence error wrapper for mod.glm.fit.", {
   # TODO
   testthat::skip("not implemented")
@@ -130,8 +129,6 @@ testthat::test_that("IDM crude survival regression gives correct
 
                       })
 
-devtools::dev_mode(on = TRUE)
-devtools::install_local()
 testthat::test_that("IDM Net survival model fitting runs inside futures", {
   # Check that the model runs even with nonsense population information
   n_ind <- 1e4

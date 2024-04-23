@@ -1,4 +1,3 @@
-devtools::load_all()
 test_that("Test compute_survprob_pch", {
   data_df <- survival::jasa
   rt <- survival::survexp.us
