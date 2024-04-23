@@ -604,62 +604,62 @@ fit_single_time_point_estimate <-
   function(s, t, transition, X, data_df, ratetable, rmap) {
     # Convert data_df to data.table for efficiency
     if (!data.table::is.data.table(data_df)) {
-      data_df = data.table::as.data.table(data_df)
+      data_df <- data.table::as.data.table(data_df)
     }
 
     # Compute censoring weights
-    cens_surv = estimate_censoring_dist(s, t, X, data_df)
+    cens_surv <- estimate_censoring_dist(s, t, X, data_df)
 
     # Update censoring indicators based on considered time t
-    censor_weights = NULL
-    censor_indicators = NULL
-    shorthand_fun = function(x) get_survival_at(x, cens_surv)
+    censor_weights <- NULL
+    censor_indicators <- NULL
+    shorthand_fun <- function(x) get_survival_at(x, cens_surv)
     if (transition == "11") {
       # FIXME implement data filtering based on state at time s
       # Construct \Delta^{1}_{t} = 1_{min(Z,t) \leq C} in Azarang 2017
       # data_df==delta1 already implies Z \leq C, update indicator based on t
-      data_df[t <= Zt & delta1==0, delta1 := 1]
-      censor_surv_t = shorthand_fun(pmin(data_df$Zt, t))
-      censor_indicators = data_df$delta1
+      data_df[t <= Zt & delta1 == 0, delta1 := 1]
+      censor_surv_t <- shorthand_fun(pmin(data_df$Zt, t))
+      censor_indicators <- data_df$delta1
     }
     else {
       # FIXME implement data filtering based on state at time s
       # \Delta_{t} = 1_{min(T,t) \leq C} in Azarang 2017, same reasoning as
       # before
-      data_df[t <= Tt & delta==0, delta := 1]
-      censor_surv_t = shorthand_fun(pmin(data_df$Tt, t))
-      censor_indicators = data_df$delta
+      data_df[t <= Tt & delta == 0, delta := 1]
+      censor_surv_t <- shorthand_fun(pmin(data_df$Tt, t))
+      censor_indicators <- data_df$delta
     }
-    censor_weights = censor_indicators / censor_surv_t
+    censor_weights <- censor_indicators / censor_surv_t
 
     # Create link function and family objects taking into account background
     # mortality
-    custom_link_constructor = if (transition %in% c('11', '12', '22')) {
-        rellogit
-      }else {
-        offsetlogit
-      }
+    custom_link_constructor <- if (transition %in% c("11", "12", "22")) {
+      rellogit
+    } else {
+      offsetlogit
+    }
 
     custom_link <- eval(substitute(
-        expr = custom_link_constructor(
-          s = s,
-          t = t,
-          data_df = data_df,
-          ratetable = ratetable,
-          rmap = rmapsub # Protect rmap non standard evaluation for survexp
-        ),
-        env = list(rmapsub = substitute(rmap))
-      ))
+      expr = custom_link_constructor(
+        s = s,
+        t = t,
+        data_df = data_df,
+        ratetable = ratetable,
+        rmap = rmapsub # Protect rmap non standard evaluation for survexp
+      ),
+      env = list(rmapsub = substitute(rmap))
+    ))
 
     # TODO check whether the binomial variance should be adjusted too
-    custom_family = binomial(link = custom_link)
+    custom_family <- binomial(link = custom_link)
 
     # Extract binary response
-    y <- if(transition == "11"){
+    y <- if (transition == "11") {
       data_df$Zt > t
-    } else if(transition %in% c("13","23")){
+    } else if (transition %in% c("13", "23")) {
       data_df$Tt <= t
-    } else if(transition %in% c("12","22")) {
+    } else if (transition %in% c("12", "22")) {
       data_df$Zt <= t & data_df$Tt > t
       # For "22" data_df$Zt <= t is already granted by the fact that s<t
       # This is not computationnally efficient but reduces code duplication
