@@ -21,6 +21,7 @@ Depends:
 Imports:
     assertr,
     assertthat,
+    collections,
     data.table,
     doFuture,
     dplyr,
@@ -32,6 +33,7 @@ Imports:
     stats,
     tibble,
     tidyr,
+    tryCatchLog,
     utils
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

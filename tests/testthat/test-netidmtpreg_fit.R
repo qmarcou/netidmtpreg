@@ -59,18 +59,18 @@ testthat::test_that("IDM crude survival model estimates", {
     )
   estimates <- list()
   for (transition in c("11", "12", "13", "23")) {
-    estimates[transition] <- 
-    renewnetTPreg(~1, synth_idm_data,
-      ratetable = NULL,
-      rmap = NULL,
-      time_dep_popvars = NULL,
-      s = s_time,
-      t = 3.0,
-      by = n_ind / 10,
-      trans = transition,
-      link = "logit",
-      R = 1 # Number of bootstraps
-    )
+    estimates[transition] <-
+      renewnetTPreg(~1, synth_idm_data,
+        ratetable = NULL,
+        rmap = NULL,
+        time_dep_popvars = NULL,
+        s = s_time,
+        t = 3.0,
+        by = n_ind / 10,
+        trans = transition,
+        link = "logit",
+        R = 1 # Number of bootstraps
+      )
   }
 
   # Check agreement with generating parameters
