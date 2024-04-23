@@ -29,6 +29,15 @@ You can install the development version of netidmtpreg like so:
 # FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
 ```
 
+If working from source through a git clone, the package should be installed locally to get tests running `future::multisession` planning working.
+This can be accomplished using `devtools`
+```{r eval=FALSE}
+devtools::dev_mode(on = TRUE)
+devtools::install_local(force = TRUE) # force package update
+testthat::test_package("netidmtpreg")
+# or testthat::test_check("netidmtpreg") to run R CMD check
+```
+
 ## Example
 
 This is a basic example which shows you how to solve a common problem:
