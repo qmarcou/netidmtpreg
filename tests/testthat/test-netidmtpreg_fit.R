@@ -327,8 +327,8 @@ population mortality are equal",
       #     lower = FALSE # P(T>t)
       #   )
       testthat::expect_equal(
-        object = net_estimated$co$coefficients,
-        expected = log(net_surv_probs / (1 - net_surv_probs)),
+        object = as.numeric(expit(net_estimated$co$coefficients)),
+        expected = net_surv_probs,
         tolerance = .01
       )
     }
