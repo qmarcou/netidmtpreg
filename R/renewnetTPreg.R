@@ -683,22 +683,22 @@ fit_single_time_point_estimate <-
 compute_single_time_bootstrap_sample <-
   function(s, t, transition, X, data_df, ratetable, rmap) {
     # Sample row ids with replacement
-    n = nrow(data_df)
-    boot_ids = sample(1:n, n, replace = TRUE)
+    n <- nrow(data_df)
+    boot_ids <- sample(1:n, n, replace = TRUE)
     return(
       eval(substitute( # Protect rmap non standard evaluation for survexp
-      fit_single_time_point_estimate(
-        s = s,
-        t = t ,
-        transition = transition,
-        # BUGFIX keep X dimensionality in case there a single term in the
-        # formula
-        X = X[boot_ids, , drop = FALSE],
-        data_df = data_df[boot_ids, ],
-        ratetable = ratetable,
-        rmap = rmapsub
-      ),
-      list(rmapsub = substitute(rmap))
+        fit_single_time_point_estimate(
+          s = s,
+          t = t,
+          transition = transition,
+          # BUGFIX keep X dimensionality in case there a single term in the
+          # formula
+          X = X[boot_ids, , drop = FALSE],
+          data_df = data_df[boot_ids, ],
+          ratetable = ratetable,
+          rmap = rmapsub
+        ),
+        list(rmapsub = substitute(rmap))
       ))
     )
   }
@@ -748,9 +748,9 @@ summarize_single_time_bootstraps <- function(boot_res_df) {
 }
 
 rellogit <- function(s, t, data_df, ratetable, rmap) {
-  SL <- 1.0 # Allow for crude mortality model fitting
+  pop_surv <- 1.0 # Allow for crude mortality model fitting
   if(!is.null(ratetable)){
-      SL <-
+      pop_surv <-
     eval(substitute(
       compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
       list(rmapsub = substitute(rmap))
@@ -758,13 +758,13 @@ rellogit <- function(s, t, data_df, ratetable, rmap) {
   }
 
   linkfun <- function(mu){
-    log((mu / SL) / abs(1 - (mu / SL)))
+    log((mu / pop_surv) / abs(1 - (mu / pop_surv)))
   }
   linkinv <- function(eta){
-    SL * exp(eta) / (1 + exp(eta))
+    pop_surv * exp(eta) / (1 + exp(eta))
   }
   mu.eta <- function(eta) {
-    SL * exp(eta) / (1 + exp(eta)) ^ 2
+    pop_surv * exp(eta) / (1 + exp(eta)) ^ 2
   }
   valideta <- function(eta){
     TRUE
@@ -782,29 +782,56 @@ rellogit <- function(s, t, data_df, ratetable, rmap) {
   ))
 }
 
-# an offset survival logit link function closure for 13 and 23 transitions
+
+#' An offset survival logit link function closure for 13 and 23 transitions.
+#'
+#' Returns a offset logit `link-glm` object taking into account population
+#' mortality a the considered times s and t.
+#'
+#' @param s positive scalar.
+#' @param t positive scalar.
+#' @param data_df A `data.frame` containing population characteristics.
+#' @param ratetable a `ratetable` object.
+#' @param rmap see survival::survexp.fit.
+#'
+#' @return a `link-glm` object
+#' @examples
+#' # ADD_EXAMPLES_HERE
 offsetlogit <- function(s, t, data_df, ratetable, rmap) {
 
-  SL <- 1.0 # Allow for crude mortality model fitting
-  if(!is.null(ratetable)){
-      SL <-
-    eval(substitute(
-      compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
-      list(rmapsub = substitute(rmap))
-    ))$expsurvs
+  pop_surv <- 1.0 # Allow for crude mortality model fitting
+  if (!is.null(ratetable)) {
+    pop_surv <-
+      eval(substitute(
+        compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
+        list(rmapsub = substitute(rmap))
+      ))$expsurvs
   }
 
-  dp <- 1 - SL #death probability
-  linkfun <- function(miu)
-    log((miu - dp) / (1 - (miu - dp)))
-  linkinv <- function(et)
-    (exp(et) * SL + dp) / (1 + exp(et))
-  mu.eta <- function(et) {
-    ((2 * SL - 1) * exp(et)) / ((1 + exp(et)) ^ 2)
+  pop_death <- 1 - pop_surv #death probability
+  # Response (mu) to linear predictor (eta) space
+  linkfun <- function(mu) {
+    return(log((mu - pop_death) / (1 - (mu - pop_death))))
   }
-  valideta <- function(et)
-    TRUE
-  link <- "log((miu-dp)/(1-(miu-dp)))"
+
+  # Linear predictor (eta) to response (mu) space
+  linkinv <- function(eta) {
+    return((exp(eta) * pop_surv + pop_death) / (1 + exp(eta)))
+  }
+
+  # Derivative of the inverse-link function with respect to the linear
+  # predictor (eta).
+  mu.eta <- function(eta) {
+    return(((2 * pop_surv - 1) * exp(eta)) / ((1 + exp(eta)) ^ 2))
+  }
+
+  # Is the linear predictor eta within the domain of linkinv.
+  valideta <- function(eta) {
+    # assert eta are finite real numbers
+    return(rlang::is_double(eta, finite = TRUE))
+  }
+
+  link <- "log((mu-pop_death)/(1-(mu-pop_death)))"
   structure(
     list(
       linkfun = linkfun,
