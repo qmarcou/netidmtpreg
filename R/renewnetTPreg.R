@@ -540,18 +540,18 @@ estimate_censoring_dist <-
     # =========================================================================
     # Convert to data.table for easier row-based selection
     if (!data.table::is.data.table(data_df)) {
-      data_df = data.table::as.data.table(data_df)
+      data_df <- data.table::as.data.table(data_df)
     }
-    data_sub = data_df[!(Tt < s & delta == 0)]
+    data_sub <- data_df[!(Tt < s & delta == 0)]
     # Create survival objects, carefully handle T<s censoring
     # Tt<s & delta==1 (eq. to C<s) have been filtered out above
-    surv_resp = survival::Surv(pmax(data_sub$Tt - s, 0), data_sub$delta == 0)
+    surv_resp <- survival::Surv(pmax(data_sub$Tt - s, 0), data_sub$delta == 0)
     # TODO allow the use of rhs_formula and other estimators
-    cens_fit = survival::survfit(surv_resp ~ +1)
+    cens_fit <- survival::survfit(surv_resp ~ +1)
     # Use summary() to keep only times of censoring events
-    cens_fit = summary(cens_fit, censored = FALSE)
+    cens_fit <- summary(cens_fit, censored = FALSE)
     # Add start time (time = s) censoring probability as first row
-    cens_surv = tibble::tibble(time = cens_fit$time, surv = cens_fit$surv) %>%
+    cens_surv <- tibble::tibble(time = cens_fit$time, surv = cens_fit$surv) %>%
       tibble::add_row(time = 0.0, surv = 1.0, .before = 1)
 
     return(cens_surv)
