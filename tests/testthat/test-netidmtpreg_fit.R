@@ -328,6 +328,40 @@ population mortality are equal",
         expected = as.numeric(expit(net_truth$co$coefficients)),
         tolerance = .01
       )
+
+      # Check against 1 - Pohar-Perme for death related transitions
+      if (transition %in% c("13", "23")) {
+        data_df <- if (transition=="13") {
+          data.table::as.data.table(crude_synth_idm_data)[
+            Tt > s_time & Zt > s_time
+          ]
+        } else {
+          data.table::as.data.table(crude_synth_idm_data)[
+            Tt > s_time & Zt <= s_time
+          ]
+        }
+        net_km_estim <- relsurv::rs.surv(
+          formula = survival::Surv(time = Tt - s_time, event = delta) ~ 1,
+          data = data.table::as.data.table(crude_synth_idm_data)[Tt > s_time],
+          ratetable = const_ratetable,
+          rmap = list(
+            age = age,
+            sex = sex,
+            year = start_date
+          ),
+        )
+
+        net_km_val <- 1 - get_survival_at(
+          t = net_estimated$co$time - s_time,
+          survfit_data = net_km_estim
+        )
+
+        testthat::expect_equal(
+          object = as.numeric(expit(net_estimated$co$coefficients)),
+          expected = net_km_val,
+          tolerance = .01
+        )
+      }
     }
 
     testthat::skip("not implemented")
