@@ -570,8 +570,9 @@ estimate_censoring_dist <-
 #'
 #' @examples
 get_survival_at <- function(t, survfit_data, safe = TRUE) {
-  # Return the `surv` value for the row with greatest time lower than t using a step function
-  if(is(survfit_data,"survfit")) survfit_data <- summary(survfit_data)
+  # Return the `surv` value for the row with greatest time lower than t using a
+  # step function
+  if (is(survfit_data, "survfit")) survfit_data <- summary(survfit_data)
   if (is(survfit_data, "summary.survfit")) {
     survfit_data <- tibble::tibble(
       time = survfit_data$time,
@@ -582,7 +583,13 @@ get_survival_at <- function(t, survfit_data, safe = TRUE) {
   # Sanity checks
   if (safe) {
     assert_positive(t, "t", invalid_argument)
-    assertr::verify(survfit_data, assertr::has_all_names("time", "surv"), error_fun = invalid_argument("survfit_data", "contain both a `time` and `surv` column"))
+    assertr::verify(
+      survfit_data,
+      assertr::has_all_names("time", "surv"),
+      error_fun = invalid_argument(
+        "survfit_data", "contain both a `time` and `surv` column"
+      )
+    )
     assert_probability(survfit_data$surv, "survfit_data$surv", invalid_argument)
   }
 
@@ -591,11 +598,15 @@ get_survival_at <- function(t, survfit_data, safe = TRUE) {
     if (all(t >= survfit_data$time[[1]])) {
       return(rep_len(1.0, length(t)))
     } else {
-      invalid_argument("survfit_data", "must contain several breakpoints or all `t` values must be greater than the provided time breakpoint")
+      invalid_argument(
+        "survfit_data",
+        "must contain several breakpoints or all `t` values must be greater
+        than the provided time breakpoint"
+      )
     }
   }
   # Normal case: use a stepfunc for efficient vectorised lookup
- surv_t <- stats::stepfun(x = survfit_data$time[-1], y = survfit_data$surv)
+  surv_t <- stats::stepfun(x = survfit_data$time[-1], y = survfit_data$surv)
 
   return(surv_t(t))
 }
@@ -757,16 +768,24 @@ rellogit <- function(s, t, data_df, ratetable, rmap) {
     ))$expsurvs
   }
 
-  linkfun <- function(mu){
+  # Response (mu) to linear predictor (eta) space
+  linkfun <- function(mu) {
     log((mu / pop_surv) / abs(1 - (mu / pop_surv)))
   }
-  linkinv <- function(eta){
+
+  # Linear predictor (eta) to response (mu) space
+  linkinv <- function(eta) {
     pop_surv * exp(eta) / (1 + exp(eta))
   }
+
+  # Derivative of the inverse-link function with respect to the linear
+  # predictor (eta).
   mu.eta <- function(eta) {
     pop_surv * exp(eta) / (1 + exp(eta)) ^ 2
   }
-  valideta <- function(eta){
+
+  # Is the linear predictor eta within the domain of linkinv.
+  valideta <- function(eta) {
     TRUE
   }
   name <- "Relative Logit"
