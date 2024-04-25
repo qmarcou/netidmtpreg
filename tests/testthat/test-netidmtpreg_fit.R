@@ -58,7 +58,7 @@ testthat::test_that("IDM crude survival model estimates", {
       age = runif(n = n_ind, min = 50, max = 80)
     )
   estimates <- list()
-  for (transition in c("11", "12", "13", "23")) {
+  for (transition in c("11", "12", "22", "13", "23")) {
     estimates[transition] <-
       renewnetTPreg(~1, synth_idm_data,
         ratetable = NULL,
@@ -109,10 +109,10 @@ testthat::test_that("IDM crude survival model estimates", {
   ## Check 22 transition estimates: survival probability
   expected_tp$set("22", pexp(estimates[["22"]]$time - s_time,
     rate = l_death,
-    lower = FALSE # P(T<t)
+    lower = FALSE # P(T>t)
   ))
 
-  for (transition in c("11", "12", "13", "23")) {
+  for (transition in c("11", "12", "22", "13", "23")) {
     tp_val <- expected_tp$get(transition)
 
     testthat::expect_equal(
@@ -153,7 +153,7 @@ testthat::test_that("IDM Net survival model fitting runs inside futures", {
     ))
   for (session_type in c("sequential", "multisession")){
     future::plan(session_type)
-    for (transition in c("all", "11", "12", "13", "23")) {
+    for (transition in c("all", "11", "12", "22", "13", "23")) {
       renewnetTPreg(
         formula = ~1,
         synth_idm_data,
@@ -274,7 +274,7 @@ population mortality are equal",
       population_death_times
     )
 
-    for (transition in c("11", "12", "13", "23")) {
+    for (transition in c("11", "12", "22", "13", "23")) {
       net_truth <- renewnetTPreg(
         formula = ~1,
         synth_idm_data,

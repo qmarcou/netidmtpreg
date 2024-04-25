@@ -313,7 +313,7 @@ renewnetTPreg <- function(s = 0,
     if (sum(comdata$delta1 < comdata$delta) != 0) {
       stop("'delta' must be 0 when 'delta1' is 0")
     }
-    if (!(trans %in% c("11", "12", "13", "23", "all"))) {
+    if (!(trans %in% c("11", "12", "22", "13", "23", "all"))) {
       stop(paste(trans, "is not a valid transition for a progressive illness-death model"))
     }
 
@@ -341,7 +341,7 @@ renewnetTPreg <- function(s = 0,
     }
 
     if (trans == "all") {
-      transitions <- c("11", "12", "13", "23")
+      transitions <- c("11", "12", "22", "13", "23")
     } else {
       transitions <- c(trans)
     }
@@ -613,6 +613,8 @@ get_survival_at <- function(t, survfit_data, safe = TRUE) {
 
 fit_single_time_point_estimate <-
   function(s, t, transition, X, data_df, ratetable, rmap) {
+    # Assume data_df and X have already been subsetted to conform to time s
+
     # Convert data_df to data.table for efficiency
     if (!data.table::is.data.table(data_df)) {
       data_df <- data.table::as.data.table(data_df)
@@ -626,7 +628,6 @@ fit_single_time_point_estimate <-
     censor_indicators <- NULL
     shorthand_fun <- function(x) get_survival_at(x, cens_surv)
     if (transition == "11") {
-      # FIXME implement data filtering based on state at time s
       # Construct \Delta^{1}_{t} = 1_{min(Z,t) \leq C} in Azarang 2017
       # data_df==delta1 already implies Z \leq C, update indicator based on t
       data_df[t <= Zt & delta1 == 0, delta1 := 1]
@@ -634,7 +635,6 @@ fit_single_time_point_estimate <-
       censor_indicators <- data_df$delta1
     }
     else {
-      # FIXME implement data filtering based on state at time s
       # \Delta_{t} = 1_{min(T,t) \leq C} in Azarang 2017, same reasoning as
       # before
       data_df[t <= Tt & delta == 0, delta := 1]
