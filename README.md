@@ -5,6 +5,7 @@
 
 <!-- badges: start -->
 
+[![Tests](https://github.com/qmarcou/netidmtpreg/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/qmarcou/netidmtpreg/actions/workflows/test-coverage.yaml)
 [![R-CMD-check](https://github.com/qmarcou/netidmtpreg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/qmarcou/netidmtpreg/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
@@ -25,6 +26,7 @@ working. This can be accomplished using `devtools`
 ``` r
 devtools::dev_mode(on = TRUE)
 devtools::install_local(force = TRUE) # force package update
+devtools::load_all() # required to make tests visible
 testthat::test_package("netidmtpreg")
 # or testthat::test_check("netidmtpreg") to run R CMD check
 ```
@@ -35,11 +37,6 @@ This is a basic example which shows you how to solve a common problem:
 
 ``` r
 library(netidmtpreg)
-#> Loading required package: doParallel
-#> Loading required package: foreach
-#> Loading required package: iterators
-#> Loading required package: parallel
-#> Loading required package: survival
 ## basic example code
 ```
 
