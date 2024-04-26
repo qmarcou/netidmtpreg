@@ -34,6 +34,7 @@ This can be accomplished using `devtools`
 ```{r eval=FALSE}
 devtools::dev_mode(on = TRUE)
 devtools::install_local(force = TRUE) # force package update
+devtools::load_all() # required to make tests visible
 testthat::test_package("netidmtpreg")
 # or testthat::test_check("netidmtpreg") to run R CMD check
 ```
