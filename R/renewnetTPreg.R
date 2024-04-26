@@ -645,14 +645,8 @@ fit_single_time_point_estimate <-
 
     # Create link function and family objects taking into account background
     # mortality
-    custom_link_constructor <- if (transition %in% c("11", "12", "22")) {
-      rellogit
-    } else {
-      offsetlogit
-    }
-
     custom_link <- eval(substitute(
-      expr = custom_link_constructor(
+      expr = rellogit(
         s = s,
         t = t,
         data_df = data_df,
@@ -668,12 +662,14 @@ fit_single_time_point_estimate <-
     # Extract binary response
     y <- if (transition == "11") {
       data_df$Zt > t
-    } else if (transition %in% c("13", "23")) {
-      data_df$Tt <= t
-    } else if (transition %in% c("12", "22")) {
+    } else if (transition == "13") {
+      # Estimate first P_{1->{1,2}} to estimate P_{13}
+      data_df$Tt > t
+    } else if (transition %in% c("12", "22", "23")) {
       data_df$Zt <= t & data_df$Tt > t
       # For "22" data_df$Zt <= t is already granted by the fact that s<t
       # This is not computationnally efficient but reduces code duplication
+      # For "23", first estimate "22" and then negate coefficients
     } else {
       stop(glue::glue("Unknown transition '{transition}'"))
     }
@@ -688,7 +684,19 @@ fit_single_time_point_estimate <-
         warning_str = paste0(" for transition ", transition, ", s=", s, " t=", t),
         maxmaxit = 1000
       )
-    return(eta)
+    if (transition %in% c("13", "23")) {
+      # The natural formulation to directly estimate coefficients for 13 and 23
+      # transition is through an offset logit link function. However this
+      # offset logit link function seems to lead to convergence issues with the
+      # GLM fitting procedure in the net survival setting.
+      # To circumvent this, the estimation is done using a relative logit
+      # formulation on the complementary transition probabilities:
+      # p_{2->3} = 1 - p_{2->2}, hence \beta_{2->3} = - \beta_{2->2}
+      # p_{1->3} = 1 - p_{1->{1,2}}
+      return(-eta)
+    } else {
+      return(eta)
+    }
   }
 
 compute_single_time_bootstrap_sample <-

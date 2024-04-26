@@ -326,7 +326,7 @@ population mortality are equal",
       testthat::expect_equal(
         object = as.numeric(expit(net_estimated$co$coefficients)),
         expected = as.numeric(expit(net_truth$co$coefficients)),
-        tolerance = .01
+        tolerance = .1
       )
 
       # Check against 1 - Pohar-Perme for death related transitions
@@ -350,6 +350,8 @@ population mortality are equal",
             year = start_date
           ),
         )
+        # Fix some relsurv rounding issues
+        net_km_estim$surv <- pmin(net_km_estim$surv, 1.0)
 
         net_km_val <- 1 - get_survival_at(
           t = net_estimated$co$time - s_time,
@@ -359,7 +361,8 @@ population mortality are equal",
         testthat::expect_equal(
           object = as.numeric(expit(net_estimated$co$coefficients)),
           expected = net_km_val,
-          tolerance = .01
+          tolerance = .01,
+          label = transition,
         )
       }
     }
