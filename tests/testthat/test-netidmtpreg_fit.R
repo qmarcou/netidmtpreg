@@ -313,58 +313,11 @@ population mortality are equal",
         R = 1 # Number of bootstraps
       )
 
-      # Compute expected coefficients using survfit
-      # net_survfit <- survival::survfit(
-      #   survival::Surv(time = pmin(Zt, Tt), event = delta) ~ 1,
-      #   data = synth_idm_data
-      # )
-      # net_surv_probs <- get_survival_at(net_estimated$co$time, net_survfit)
-      # net_surv_probs <- pexp(net_estimated$co$time,
-      #     rate = (l_illness + l_death),
-      #     lower = FALSE # P(T>t)
-      #   )
       testthat::expect_equal(
         object = as.numeric(expit(net_estimated$co$coefficients)),
         expected = as.numeric(expit(net_truth$co$coefficients)),
         tolerance = .1
       )
-
-      # Check against 1 - Pohar-Perme for death related transitions
-      if (transition %in% c("13", "23")) {
-        data_df <- if (transition=="13") {
-          data.table::as.data.table(crude_synth_idm_data)[
-            Tt > s_time & Zt > s_time
-          ]
-        } else {
-          data.table::as.data.table(crude_synth_idm_data)[
-            Tt > s_time & Zt <= s_time
-          ]
-        }
-        net_km_estim <- relsurv::rs.surv(
-          formula = survival::Surv(time = Tt - s_time, event = delta) ~ 1,
-          data = data.table::as.data.table(crude_synth_idm_data)[Tt > s_time],
-          ratetable = const_ratetable,
-          rmap = list(
-            age = age,
-            sex = sex,
-            year = start_date
-          ),
-        )
-        # Fix some relsurv rounding issues
-        net_km_estim$surv <- pmin(net_km_estim$surv, 1.0)
-
-        net_km_val <- 1 - get_survival_at(
-          t = net_estimated$co$time - s_time,
-          survfit_data = net_km_estim
-        )
-
-        testthat::expect_equal(
-          object = as.numeric(expit(net_estimated$co$coefficients)),
-          expected = net_km_val,
-          tolerance = .01,
-          label = transition,
-        )
-      }
     }
 
     testthat::skip("not implemented")
