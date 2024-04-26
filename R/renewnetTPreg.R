@@ -766,14 +766,29 @@ summarize_single_time_bootstraps <- function(boot_res_df) {
   return(boot_summary)
 }
 
+#' An relative survival logit link function closure.
+#'
+#' Returns a offset logit `link-glm` object taking into account population
+#' mortality a the considered times s and t. This relative logit function
+#' arises when decomposing observed transition probabilities into net
+#' transitions and population survival for all transitions where death (3) is
+#' not the target state.
+#'
+#' @param s positive scalar.
+#' @param t positive scalar.
+#' @param data_df A `data.frame` containing population characteristics.
+#' @param ratetable a `ratetable` object.
+#' @param rmap see survival::survexp.fit.
+#'
+#' @return a `link-glm` object
 rellogit <- function(s, t, data_df, ratetable, rmap) {
   pop_surv <- 1.0 # Allow for crude mortality model fitting
-  if(!is.null(ratetable)){
-      pop_surv <-
-    eval(substitute(
-      compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
-      list(rmapsub = substitute(rmap))
-    ))$expsurvs
+  if (!is.null(ratetable)) {
+    pop_surv <-
+      eval(substitute(
+        compute_survprob_pch(data_df, t - s, ratetable, rmap = rmapsub),
+        list(rmapsub = substitute(rmap))
+      ))$expsurvs
   }
 
   # Response (mu) to linear predictor (eta) space
@@ -789,14 +804,17 @@ rellogit <- function(s, t, data_df, ratetable, rmap) {
   # Derivative of the inverse-link function with respect to the linear
   # predictor (eta).
   mu.eta <- function(eta) {
-    pop_surv * exp(eta) / (1 + exp(eta)) ^ 2
+    pop_surv * exp(eta) / (1 + exp(eta))^2
   }
 
   # Is the linear predictor eta within the domain of linkinv.
   valideta <- function(eta) {
-    TRUE
+    # assert eta are finite real numbers
+    return(rlang::is_double(eta, finite = TRUE))
   }
+
   name <- "Relative Logit"
+
   return(structure(
     list(
       linkfun = linkfun,
