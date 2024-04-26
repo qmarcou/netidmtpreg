@@ -529,6 +529,58 @@ testthat::test_that("Test summarize_single_time_bootstraps", {
 })
 
 testthat::test_that(
+  "Relative logit is invertible",
+  {
+    n_ind <- 1e4
+    synth_idm_data <- generate_uncensored_ind_exp_idm_data(
+      n_individuals = n_ind,
+      lambda_illness = 1.0,
+      lambda_death = 0.1
+    )
+    # Generate random age and sex labels
+    synth_idm_data <-
+      synth_idm_data %>% tibble::add_column(
+        sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
+        age = runif(n = n_ind, min = 50, max = 80)
+      )
+    # Generate random start of follow up dates
+    # FIXME a date before 1940 or after 2012 (limits of uspop ratetable) is
+    # extremely unlikely with these parameters but not impossible.
+    synth_idm_data <-
+      synth_idm_data %>% tibble::add_column(start_date = as.Date.numeric(
+        x = rnorm(n = n_ind, mean = 0, sd = 1e2),
+        origin = as.Date("15/06/1976", "%d/%m/%Y")
+      ))
+    relative_logit_obj <- rellogit(
+      s = .5,
+      t = 1.0,
+      data_df = synth_idm_data,
+      ratetable = survival::survexp.us,
+      rmap = list(year = start_date, sex = sex, age = age)
+    )
+
+    # Starting from response space
+    mu <- .8
+    testthat::expect_equal(
+      object = mu %>% relative_logit_obj$linkfun() %>%
+        relative_logit_obj$linkinv() %>%
+        as.numeric(),
+      expected = rep.int(mu, n_ind),
+      tolerance = .0001,
+    )
+
+    eta <- 1.5
+    testthat::expect_equal(
+      object = eta %>% relative_logit_obj$linkinv() %>%
+        relative_logit_obj$linkfun() %>%
+        as.numeric(),
+      expected = rep.int(eta, n_ind),
+      tolerance = .001,
+    )
+  }
+)
+
+testthat::test_that(
   "Offset logit is invertible",
   {
     n_ind <- 1e4
