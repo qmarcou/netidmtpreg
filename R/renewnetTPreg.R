@@ -501,6 +501,13 @@ renewnetTPreg <- function(s = 0,
           UPL = extract_stat_matrix("ci.ub"),
           n.failed.boot = NULL
         )
+      # FIXME Add non informative p.value field to conform with legacy code
+      CO[["p.value"]] <- matrix(NA,
+        nrow = length(vec.t),
+        ncol = ncol(CO$SD),
+        dimnames = dimnames(CO$SD)
+      )
+
       if (length(transitions) > 1) {
         co[[glue::glue("co{trans}")]] <- CO
       } else {
