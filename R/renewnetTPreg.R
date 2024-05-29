@@ -321,9 +321,6 @@ renewnetTPreg <- function(s = 0,
       stop("for the transition '23' argument 's' must be larger than 0")
     }
 
-    co <- vector("list", 4)
-    names(co) <- c("co11", "co12", "co13", "co23")
-
     # Check correctness of time_dep_popvars and its interplay with rmap
     rmapsub <- substitute(rmap)
     if (is.list(time_dep_popvars) || is.character(time_dep_popvars)) {
@@ -340,11 +337,15 @@ renewnetTPreg <- function(s = 0,
       stop("`time_dep_popvars` must be a list or vector of strings or NULL")
     }
 
-    if (trans == "all") {
+    if (trans == "all") {  # FIXME name clashes with for loop var name
       transitions <- c("11", "12", "22", "13", "23")
     } else {
       transitions <- c(trans)
     }
+
+    # Pre-allocate list names for the returned object
+    co <- vector("list", length(transitions))
+    names(co) <- glue::glue("co{transitions}")
 
     for (trans in transitions) {
       # Select individuals at risk at time s
@@ -500,8 +501,8 @@ renewnetTPreg <- function(s = 0,
           UPL = extract_stat_matrix("ci.ub"),
           n.failed.boot = NULL
         )
-      if (trans == "all") {
-        co$co11 <- CO
+      if (length(transitions) > 1) {
+        co[[glue::glue("co{trans}")]] <- CO
       } else {
         co <-
           list(
@@ -516,6 +517,17 @@ renewnetTPreg <- function(s = 0,
         class(co) <- "TPreg"
         return(co)
       }
+    }
+    # Get calls and formula for multiple transitions
+    if (length(transitions) > 1) {
+      co$call <- match.call()
+      co$formula <- formula
+      co$transition <- "all"
+      co$s <- s
+      co$t <- t
+      co$n.misobs <- n.misobs
+      class(co) <- "TPreg"
+      return(co)
     }
   }
 
