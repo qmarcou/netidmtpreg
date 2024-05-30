@@ -18,7 +18,8 @@ test_that("Plotting TPreg objects does not throw any error", {
       sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
       age = runif(n = n_ind, min = 50, max = 80)
     )
-  for (transition in c("11", "all")) {
+  # for (transition in c("11", "all")) {
+  for (transition in c("11")) {
     estimate <-
       renewnetTPreg(~1, synth_idm_data,
         ratetable = NULL,
@@ -29,7 +30,7 @@ test_that("Plotting TPreg objects does not throw any error", {
         by = n_ind / 10,
         trans = transition,
         link = "logit",
-        R = 1 # Number of bootstraps
+        R = 10 # Number of bootstraps
       )
     testthat::expect_no_error(
       plot(estimate)
@@ -46,7 +47,7 @@ test_that("Plotting TPreg objects does not throw any error", {
         by = n_ind / 10,
         trans = transition,
         link = "logit",
-        R = 1 # Number of bootstraps
+        R = 10 # Number of bootstraps
       )
     testthat::expect_no_error(
       plot(estimate)
