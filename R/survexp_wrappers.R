@@ -236,7 +236,7 @@ dftoRatetable <- function(
       list(relsurv::transrate(
         lifetable[
           sexe == "M" & dept == dep,
-          .(agerev, annee, yearsurv = 1 - mua)
+          list(agerev, annee, yearsurv = 1 - mua)
         ] %>%
           tidyr::pivot_wider(
             id_cols = agerev,
@@ -348,72 +348,5 @@ dftoRatetable <- function(
   if(min(time_steps)<min(filtered_event_times) | max(time_steps)>max(filtered_event_times)){
     stop("All time steps must lie in [min(event_times),max(event_times)]")
   }
-}
-
-
-
-# nessie function from the relsurv package, under GNU GPL
-nessie <- function (formula = formula(data), data = parent.frame(), ratetable = relsurv::slopop,
-          times, rmap)
-{
-  call <- match.call()
-  if (!missing(rmap)) {
-    rmap <- substitute(rmap)
-  }
-  na.action <- NA
-  rform <- rformulate(formula, data, ratetable, na.action,
-                      rmap)
-  templab <- attr(rform$Terms, "term.labels")
-  if (!is.null(attr(rform$Terms, "specials")$ratetable))
-    templab <- templab[-length(templab)]
-  nameslist <- vector("list", length(templab))
-  for (it in 1:length(nameslist)) {
-    valuetab <- table(data[, match(templab[it], names(data))])
-    nameslist[[it]] <- paste(templab[it], names(valuetab),
-                             sep = "")
-  }
-  names(nameslist) <- templab
-  data <- rform$data
-  p <- rform$m
-  if (p > 0) {
-    data$Xs <- my.strata(rform$X[, , drop = F], nameslist = nameslist)
-  }
-  else data$Xs <- rep(1, nrow(data))
-  if (!missing(times))
-    tis <- times
-  else tis <- unique(sort(floor(rform$Y/365.241)))
-  tis <- unique(c(0, tis))
-  tisd <- tis * 365.241
-  out <- NULL
-  out$n <- table(data$Xs)
-  out$sp <- out$strata <- NULL
-  for (kt in order(names(table(data$Xs)))) {
-    inx <- which(data$Xs == names(out$n)[kt])
-    temp <- exp.prep(rform$R[inx, , drop = FALSE], rform$Y[inx],
-                     rform$ratetable, rform$status[inx], times = tisd,
-                     fast = FALSE)
-    out$time <- c(out$time, tisd)
-    out$sp <- c(out$sp, temp$sis)
-    out$strata <- c(out$strata, length(tis))
-    temp <- exp.prep(rform$R[inx, , drop = FALSE], rform$Y[inx],
-                     rform$ratetable, rform$status[inx], times = (seq(0,
-                                                                      100, by = 0.5) * 365.241)[-1], fast = FALSE)
-    out$povp <- c(out$povp, mean(temp$sit/365.241))
-  }
-  names(out$strata) <- names(out$n)[order(names(table(data$Xs)))]
-  if (p == 0)
-    out$strata <- NULL
-  mata <- matrix(out$sp, ncol = length(tis), byrow = TRUE)
-  mata <- data.frame(mata)
-  mata <- cbind(mata, out$povp)
-  row.names(mata) <- names(out$n)[order(names(table(data$Xs)))]
-  names(mata) <- c(tis, "c.exp.surv")
-  cat("\n")
-  print(round(mata, 1))
-  cat("\n")
-  out$mata <- mata
-  out$n <- as.vector(out$n)
-  class(out) <- "nessie"
-  invisible(out)
 }
 

@@ -28,7 +28,7 @@ mod.glm.fit.errorwrapper <-
            response,
            family,
            weights,
-           maxit = glm.control()$maxit,
+           maxit = stats::glm.control()$maxit,
            maxmaxit = 1000,
            warning_str = "",
            ...) {
@@ -41,7 +41,7 @@ mod.glm.fit.errorwrapper <-
           family = family,
           weights = weights,
           start = rep.int(0, times = ncol(X)),
-          control = glm.control(maxit = maxit)
+          control = stats::glm.control(maxit = maxit)
         )
       },
       warning = function(warn) {
@@ -138,7 +138,7 @@ mod.glm.fit.callingwrapper <-
            response,
            family,
            weights,
-           maxit = glm.control()$maxit,
+           maxit = stats::glm.control()$maxit,
            maxmaxit = 1000,
            warning_str = "",
            ...) {
@@ -591,8 +591,8 @@ estimate_censoring_dist <-
 get_survival_at <- function(t, survfit_data, safe = TRUE) {
   # Return the `surv` value for the row with greatest time lower than t using a
   # step function
-  if (is(survfit_data, "survfit")) survfit_data <- summary(survfit_data)
-  if (is(survfit_data, "summary.survfit")) {
+  if (isa(survfit_data, "survfit")) survfit_data <- summary(survfit_data)
+  if (isa(survfit_data, "summary.survfit")) {
     survfit_data <- tibble::tibble(
       time = survfit_data$time,
       surv = survfit_data$surv
