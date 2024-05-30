@@ -85,7 +85,7 @@ generate_exponential_time_to_event <-
                  invalid_argument,
                  c(assert_scalar, assert_positive))
     # Generate and return random exponential time to events
-    return(rexp(n = n_individuals, rate = lambda))
+    return(stats::rexp(n = n_individuals, rate = lambda))
   }
 
 #' Generate uncensored independent exponential illness-death data.

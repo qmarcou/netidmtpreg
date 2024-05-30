@@ -268,7 +268,7 @@ renewnetTPreg <- function(s = 0,
     mf <- mf[c(1L, m)]
     # add options for model.frame()
     mf$drop.unused.levels <- TRUE # simplify factors and retain only used levels
-    mf$na.action <- na.pass # all missing values will be retained in the model frame
+    mf$na.action <- stats::na.pass # all missing values will be retained in the model frame
     mf[[1L]] <- quote(stats::model.frame)
     mf <- eval(mf, parent.frame())
     mt <- attr(mf, "terms")
@@ -774,7 +774,7 @@ compute_single_time_bootstraps <-
 summarize_single_time_bootstraps <- function(boot_res_df) {
   boot_summary <-
     boot_res_df %>% dplyr::summarise(dplyr::across(
-      .cols = everything(),
+      .cols = dplyr::everything(),
       .fns = list(
         sd = ~ sd(.x, na.rm = TRUE),
         ci.lb = ~ quantile(.x, prob = 0.025, na.rm = TRUE),
