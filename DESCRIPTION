@@ -21,6 +21,8 @@ Imports:
     data.table,
     dplyr,
     future.apply,
+    ggplot2,
+    ggpubr,
     glue,
     graphics,
     purrr,
