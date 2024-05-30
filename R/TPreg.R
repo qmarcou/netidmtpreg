@@ -3,7 +3,8 @@ as_tibble.TPreg <- function(x, tmpsep = ".-_-.") {
   # Get covariate names
   var_names <- all.vars(x$co$formula)
   # Check whether formula implies an intercept
-  if (attr(terms(x$co$formula), "intercept")) {
+  # check existence of an intercept https://stackoverflow.com/questions/50073814/create-expression-test-to-see-if-as-formulax-1-in-r-contains-an-intercept
+  if (attr(stats::terms(x$co$formula), "intercept")) {
     var_names <- c("(Intercept)", var_names)
   }
 

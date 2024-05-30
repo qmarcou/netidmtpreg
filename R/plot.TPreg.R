@@ -26,3 +26,5 @@ plot_TPregs <- function(TPregs_tidy, s = NULL) {
     ggplot2::facet_wrap(~covar)
   return(ggplot_obj)
 }
+# problem of shared colorscale between faceted plots, cf https://stackoverflow.com/questions/3805029/different-legends-and-fill-colours-for-facetted-ggplot, see bottom answer using ggnewscale
+
