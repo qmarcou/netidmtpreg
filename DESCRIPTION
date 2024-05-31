@@ -8,8 +8,10 @@ Authors@R:
            comment = c(ORCID = "0000-0001-7074-2761"))
 Description: This package implements utilities to infer and inspect
     transition probabilities in a progressive illness-death model in a net
-    survival context through binomial regression. Ref: Azarang L & Giorgi
-    R. (2021) <doi:10.1177/09622802211003608>
+    survival context through binomial regression. As such it also provides 
+    routines to analyze illness-death transition probabilities without 
+    correcting for background mortality.
+    Ref: Azarang L & Giorgi R. (2021) <doi:10.1177/09622802211003608>
 License: GPL (>= 2)
 URL: https://github.com/qmarcou/netidmtpreg
 BugReports: https://github.com/qmarcou/netidmtpreg/issues
@@ -37,7 +39,7 @@ Imports:
     utils
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.1
 Suggests: 
     collections,
     future,
