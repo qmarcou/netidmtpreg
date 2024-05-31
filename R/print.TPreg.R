@@ -1,6 +1,7 @@
 # Code sourced from idmTPreg package v1.1 under GNU-GPLv2
 # Authors: Leyla Azarang and Manuel Oviedo de la Fuente
 
+#' @export
 print.TPreg <-
 function(x,...){
   if(x$transition == "all"){

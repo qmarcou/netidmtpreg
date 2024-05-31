@@ -1,6 +1,4 @@
-# Code sourced from idmTPreg package v1.1 under GNU-GPLv2
-# Authors: Leyla Azarang and Manuel Oviedo de la Fuente
-
+#' @export
 plot.TPreg <-
   function(x, covar, rug = TRUE, main, ylab, xlab, Ylim, ...) {
     return(x %>% as_tibble.TPreg() %>% plot_TPregs())

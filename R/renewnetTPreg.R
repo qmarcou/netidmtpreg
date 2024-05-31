@@ -201,6 +201,7 @@ mod.glm.fit.callingwrapper <-
 #' (`FALSE`) or adjust t values to observed transition times (`TRUE`).  
 #'
 #' @return RETURN_DESCRIPTION
+#' @export
 #'
 #' @references
 #' Azarang, L., Scheike, T., & de Uña‐Álvarez, J. (2017). Direct modeling of

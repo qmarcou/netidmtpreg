@@ -1,6 +1,7 @@
 # Code sourced from idmTPreg package v1.1 under GNU-GPLv2
 # Authors: Leyla Azarang and Manuel Oviedo de la Fuente
 
+#' @export
 summary.TPreg <-
 function(object,...){
   cat("Call:\n")
