@@ -51,6 +51,7 @@ using the package. Let's first generate some data:
 
 ```{r Generate random data}
 library(netidmtpreg)
+library(tidyverse)
 
 n_ind <- 1e2 # number of simulated individuals
 
@@ -85,7 +86,7 @@ population_death_times <- generate_exponential_time_to_event(
 const_ratetable <- survival::survexp.us
 const_ratetable[] <- l_pop_death # ratetable's covariate do not matter
 # Update death time accordingly to create an observed crude survival dataset
-crude_synth_idm_data <- apply_iddata_death(
+crude_synth_idm_data <- netidmtpreg:::apply_iddata_death(
   synth_idm_data,
   population_death_times
 )
@@ -97,8 +98,8 @@ Now let's carry the of net survival:
 future::plan("multisession") # will work on any OS
 # future::plan("multicore") # more efficient but only works on UNIX systems
 net_estimate <- renewnetTPreg(
-  formula = ~1,  # intercept only model, boils down to Pohar-Perme
-  crude_synth_idm_data,
+  formula = ~ sex,  # intercept + binary covariate
+  data = crude_synth_idm_data,
   # Use a standard ratetable
   ratetable = const_ratetable,
   rmap = list(
@@ -107,14 +108,15 @@ net_estimate <- renewnetTPreg(
     year = start_date
   ),
   time_dep_popvars = list("age", "year"),
-  s = s_time,
-  trans = transition,
+  s = 0.5,
+  trans = "13",
   link = "logit",
   R = 100 # Number of bootstraps
 )
+future::plan("sequential") # close the multisession, see future's documentation
 ```
 
-We obtain a `TPreg` with a dedicated plotting method using ggplot:
+We obtain a `TPreg` object with a dedicated plotting method using ggplot:
 
 ```{r plot, echo = FALSE}
 plot(net_estimate)
