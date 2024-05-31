@@ -16,18 +16,22 @@ knitr::opts_chunk$set(
 # netidmtpreg
 
 <!-- badges: start -->
+[![Lifecycle Status](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 [![Tests](https://github.com/qmarcou/netidmtpreg/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/qmarcou/netidmtpreg/actions/workflows/test-coverage.yaml)
 [![R-CMD-check](https://github.com/qmarcou/netidmtpreg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/qmarcou/netidmtpreg/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-The goal of netidmtpreg is to ...
+The goal of netidmtpreg is to enable net survival estimation through direct
+binomial regression, allowing modeling continuous covariate effects that could
+not be handled through stratified Pohar-Perme estimation, all this in a 
+multistate Illness-Death setting.   
 
 ## Installation
 
 You can install the development version of netidmtpreg like so:
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+devtools::install_github("qmarcou/netidmtpreg")
 ```
 
 If working from source through a git clone, the package should be installed locally to get tests running `future::multisession` planning working.
@@ -42,25 +46,78 @@ testthat::test_package("netidmtpreg")
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+This is a basic example illustrating net survival estimation on data simulated 
+using the package. Let's first generate some data:
 
-```{r example}
+```{r Generate random data}
 library(netidmtpreg)
-## basic example code
+
+n_ind <- 1e2 # number of simulated individuals
+
+# Generate exponentially distributed event times without censoring
+synth_idm_data <- generate_uncensored_ind_exp_idm_data(
+  n_individuals = n_ind,
+  lambda_illness = 1.0,
+  lambda_death = 0.1
+)
+
+# Generate random age and sex labels
+synth_idm_data <-
+  synth_idm_data %>% tibble::add_column(
+    sex = ifelse(rbinom(n_ind, 1, prob = .5), "male", "female"),
+    age = runif(n = n_ind, min = 50, max = 80)
+  )
+
+# Generate random start of follow up dates
+synth_idm_data <-
+  synth_idm_data %>% tibble::add_column(start_date = as.Date.numeric(
+    x = rnorm(n = n_ind, mean = 0, sd = 1e2),
+    origin = as.Date("15/06/1976", "%d/%m/%Y")
+  ))
+
+# Generate population mortality assuming equal constant population rate
+l_pop_death <- 0.1 # extra disease mortality doubles the population mortality
+population_death_times <- generate_exponential_time_to_event(
+  n_individuals = n_ind,
+  lambda = l_pop_death
+)
+# create a corresponding ratetable object
+const_ratetable <- survival::survexp.us
+const_ratetable[] <- l_pop_death # ratetable's covariate do not matter
+# Update death time accordingly to create an observed crude survival dataset
+crude_synth_idm_data <- apply_iddata_death(
+  synth_idm_data,
+  population_death_times
+)
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-summary(cars)
+Now let's carry the of net survival:
+```{r estimation}
+# Estimation can be sped up and carried in parrallel using futures:
+future::plan("multisession") # will work on any OS
+# future::plan("multicore") # more efficient but only works on UNIX systems
+net_estimate <- renewnetTPreg(
+  formula = ~1,  # intercept only model, boils down to Pohar-Perme
+  crude_synth_idm_data,
+  # Use a standard ratetable
+  ratetable = const_ratetable,
+  rmap = list(
+    age = age,
+    sex = sex,
+    year = start_date
+  ),
+  time_dep_popvars = list("age", "year"),
+  s = s_time,
+  trans = transition,
+  link = "logit",
+  R = 100 # Number of bootstraps
+)
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
+We obtain a `TPreg` with a dedicated plotting method using ggplot:
 
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-# plot(pressure)
+```{r plot, echo = FALSE}
+plot(net_estimate)
 ```
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+More examples to come!
