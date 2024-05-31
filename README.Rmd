@@ -93,7 +93,7 @@ crude_synth_idm_data <- netidmtpreg:::apply_iddata_death(
 ```
 
 Now let's carry the of net survival:
-```{r estimation}
+```{r estimation, echo=TRUE, warning=FALSE, message=FALSE}
 # Estimation can be sped up and carried in parrallel using futures:
 future::plan("multisession") # will work on any OS
 # future::plan("multicore") # more efficient but only works on UNIX systems
