@@ -2,7 +2,7 @@ Type: Package
 Package: netidmtpreg
 Title: Net Survival Binomial Regression for Progressive Illness Death
     Models
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: 
     person("Quentin", "Marcou", , "quentin.marcou@univ-amu.fr", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7074-2761"))

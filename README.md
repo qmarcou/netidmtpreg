@@ -13,7 +13,7 @@ Status](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifec
 
 The goal of netidmtpreg is to enable net survival estimation through
 direct binomial regression, allowing modeling continuous covariate
-effects that could not be handled through stratified Pohar-Perme
+effects that could not be handled through e.g stratified Pohar-Perme
 estimation, all this in a multistate Illness-Death setting.
 
 ## Installation
@@ -61,7 +61,7 @@ n_ind <- 1e2 # number of simulated individuals
 synth_idm_data <- generate_uncensored_ind_exp_idm_data(
   n_individuals = n_ind,
   lambda_illness = 1.0,
-  lambda_death = 0.1
+  lambda_death = 1.0
 )
 
 # Generate random age and sex labels
@@ -79,7 +79,7 @@ synth_idm_data <-
   ))
 
 # Generate population mortality assuming equal constant population rate
-l_pop_death <- 0.1 # extra disease mortality doubles the population mortality
+l_pop_death <- 1.0 # extra disease mortality doubles the population mortality
 population_death_times <- generate_exponential_time_to_event(
   n_individuals = n_ind,
   lambda = l_pop_death
@@ -94,14 +94,14 @@ crude_synth_idm_data <- netidmtpreg:::apply_iddata_death(
 )
 ```
 
-Now let’s carry the of net survival:
+Now let’s carry the of net survival estimation:
 
 ``` r
 # Estimation can be sped up and carried in parrallel using futures:
 future::plan("multisession") # will work on any OS
 # future::plan("multicore") # more efficient but only works on UNIX systems
 net_estimate <- renewnetTPreg(
-  formula = ~ sex,  # intercept + binary covariate
+  formula = ~1, # intercept only model, similar to Pohar-Perme estimation
   data = crude_synth_idm_data,
   # Use a standard ratetable
   ratetable = const_ratetable,
@@ -111,22 +111,26 @@ net_estimate <- renewnetTPreg(
     year = start_date
   ),
   time_dep_popvars = list("age", "year"),
-  s = 0.5,
-  trans = "13",
+  s = 0.2,
+  by = n_ind / 10,
+  trans = "11",
   link = "logit",
   R = 100 # Number of bootstraps
 )
+#> [1] "estimate"
+#> [1] "bootstrap"
 future::plan("sequential") # close the multisession, see future's documentation
 ```
 
 We obtain a `TPreg` object with a dedicated plotting method using
 ggplot:
 
-    #> Warning: Removed 1 row containing missing values or values outside the scale range
-    #> (`geom_line()`).
-    #> `geom_line()`: Each group consists of only one observation.
-    #> ℹ Do you need to adjust the group aesthetic?
+``` r
+plot(net_estimate) + ggplot2::ylim(-5, 5)
+#> Warning: Removed 1 row containing missing values or values outside the scale range
+#> (`geom_line()`).
+```
 
 <img src="man/figures/README-plot-1.png" width="100%" />
 
-More examples to come\!
+Let’s make sure we a More examples to come\!

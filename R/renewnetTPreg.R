@@ -1,6 +1,7 @@
-# Code adapted from idmTPreg package v1.1 under GNU-GPLv2
+# Code initially inspired from idmTPreg package v1.1 under GNU-GPLv2
 # Original Authors: Leyla Azarang and Manuel Oviedo de la Fuente
-# Adapted for net survival setting by Quentin Marcou, based on <ref>
+# Largely rewritten and adapted for net survival setting by Quentin Marcou,
+# based on <ref>
 
 
 #' @title Wraps the call to mod.glm.fit to handle convergence errors
@@ -32,7 +33,7 @@ mod.glm.fit.errorwrapper <-
            maxmaxit = 1000,
            warning_str = "",
            ...) {
-    result <- tryCatchLog::tryCatchLog({
+    result <- tryCatch({
       # Try
       withCallingHandlers({
         mod.glm.fit2(
