@@ -215,7 +215,7 @@ mod.glm.fit.callingwrapper <-
 #' doi:10.1177/09622802211003608
 #' @examples
 #' # ADD_EXAMPLES_HERE
-renewnetTPreg <- function(s = 0,
+fit_netTPreg <- function(s = 0,
                           t = NULL,
                           trans,
                           formula,

@@ -101,7 +101,7 @@ Now let’s carry the of net survival estimation:
 # Estimation can be sped up and carried in parrallel using futures:
 future::plan("multisession") # will work on any OS
 # future::plan("multicore") # more efficient but only works on UNIX systems
-net_estimate <- renewnetTPreg(
+net_estimate <- fit_netTPreg(
   formula = ~1, # intercept only model, similar to Pohar-Perme estimation
   data = crude_synth_idm_data,
   # Use a standard ratetable

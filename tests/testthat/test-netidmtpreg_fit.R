@@ -60,7 +60,7 @@ testthat::test_that("IDM crude survival model estimates", {
   estimates <- list()
   for (transition in c("11", "12", "22", "13", "23")) {
     estimates[transition] <-
-      renewnetTPreg(~1, synth_idm_data,
+      fit_netTPreg(~1, synth_idm_data,
         ratetable = NULL,
         rmap = NULL,
         time_dep_popvars = NULL,
@@ -154,7 +154,7 @@ testthat::test_that("IDM Net survival model fitting runs inside futures", {
   for (session_type in c("sequential", "multisession")){
     future::plan(session_type)
     for (transition in c("all", "11", "12", "22", "13", "23")) {
-      renewnetTPreg(
+      fit_netTPreg(
         formula = ~1,
         synth_idm_data,
         # Use a standard ratetable
@@ -201,7 +201,7 @@ testthat::test_that("IDM Net survival fitting arguments handling", {
 
   # vector-like t with adjusted_t gives is estimated at expected times
   t <- c(1.3, 1.4, 1.5)
-  estim <- renewnetTPreg(
+  estim <- fit_netTPreg(
     s = .5,
     t = t,
     trans = "11",
@@ -213,7 +213,7 @@ testthat::test_that("IDM Net survival fitting arguments handling", {
   )
   testthat::expect_equal(object = estim$co$time, expected = t)
   testthat::expect_error( # large t in unadjusted vector of times
-    estim <- renewnetTPreg(
+    estim <- fit_netTPreg(
       s = .5,
       t = c(t, 1e5),
       trans = "11",
@@ -275,7 +275,7 @@ population mortality are equal",
     )
 
     for (transition in c("11", "12", "22", "13", "23")) {
-      net_truth <- renewnetTPreg(
+      net_truth <- fit_netTPreg(
         formula = ~1,
         synth_idm_data,
         # Use a standard ratetable
@@ -294,7 +294,7 @@ population mortality are equal",
         R = 1 # Number of bootstraps
       )
 
-      net_estimated <- renewnetTPreg(
+      net_estimated <- fit_netTPreg(
         formula = ~1,
         crude_synth_idm_data,
         # Use a standard ratetable

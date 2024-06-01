@@ -21,7 +21,7 @@ test_that("Plotting TPreg objects does not throw any error", {
   # for (transition in c("11", "all")) {
   for (transition in c("11")) {
     estimate <-
-      renewnetTPreg(~1, synth_idm_data,
+      fit_netTPreg(~1, synth_idm_data,
         ratetable = NULL,
         rmap = NULL,
         time_dep_popvars = NULL,
@@ -38,7 +38,7 @@ test_that("Plotting TPreg objects does not throw any error", {
 
     # Check with more than just an intercept
     estimate <-
-      renewnetTPreg(~sex, synth_idm_data,
+      fit_netTPreg(~sex, synth_idm_data,
         ratetable = NULL,
         rmap = NULL,
         time_dep_popvars = NULL,
