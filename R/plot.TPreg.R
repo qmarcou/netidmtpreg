@@ -1,3 +1,9 @@
+autolayer.TPreg <- function() {
+  # https://stackoverflow.com/a/7099056
+  # https://ggplot2.tidyverse.org/reference/automatic_plotting.html
+  return()
+}
+
 #' @export
 plot.TPreg <-
   function(x, covar, rug = TRUE, main, ylab, xlab, Ylim, ...) {

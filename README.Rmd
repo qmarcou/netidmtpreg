@@ -18,6 +18,7 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 [![Lifecycle Status](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 [![Tests](https://github.com/qmarcou/netidmtpreg/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/qmarcou/netidmtpreg/actions/workflows/test-coverage.yaml)
+[![codecov](https://codecov.io/gh/qmarcou/netidmtpreg/graph/badge.svg?token=BMMMFGO30V)](https://codecov.io/gh/qmarcou/netidmtpreg)
 [![R-CMD-check](https://github.com/qmarcou/netidmtpreg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/qmarcou/netidmtpreg/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
