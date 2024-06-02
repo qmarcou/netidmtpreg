@@ -124,5 +124,4 @@ We obtain a `TPreg` object with a dedicated plotting method using ggplot:
 plot(net_estimate) + ggplot2::ylim(-5, 5)
 ```
 
-Let's make sure we a
 More examples to come!

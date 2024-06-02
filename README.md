@@ -134,4 +134,4 @@ plot(net_estimate) + ggplot2::ylim(-5, 5)
 
 <img src="man/figures/README-plot-1.png" width="100%" />
 
-Let’s make sure we a More examples to come\!
+More examples to come\!
