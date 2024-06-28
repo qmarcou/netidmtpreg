@@ -43,6 +43,11 @@ as_tibble.TPreg <- function(x, tmpsep = ".-_-.") {
   return(tidy_tib)
 }
 
+tidy.TPreg <- function(object) {
+  # Broom style S3 method
+  return(as_tibble.TPreg(object))
+}
+
 combine_TPreg_tidy <- function(TPregs_objects, model_names = NULL) {
   if (is.null(names(TPregs_objects)) & is.null(model_names)) {
     stop("You must provide names for the TPreg objects, either via a names
