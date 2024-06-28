@@ -572,7 +572,13 @@ estimate_censoring_dist <-
     # Use summary() to keep only times of censoring events
     cens_fit <- summary(cens_fit, censored = FALSE)
     # Add start time (time = s) censoring probability as first row
-    cens_surv <- tibble::tibble(time = cens_fit$time, surv = cens_fit$surv) %>%
+    cens_surv <- tibble::tibble(
+      # BUGFIX: as.double needed for survival >=3.7.0
+      # Otherwise empty data.frame columns are equivalent to c(), which is NULL
+      # and will be dropped by the tibble() constructor and add_row will crash
+      time = as.double(cens_fit$time),
+      surv = as.double(cens_fit$surv)
+    ) %>%
       tibble::add_row(time = 0.0, surv = 1.0, .before = 1)
 
     return(cens_surv)
