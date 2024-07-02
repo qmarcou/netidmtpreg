@@ -24,7 +24,6 @@ Imports:
     dplyr,
     future.apply,
     ggplot2,
-    ggpubr,
     glue,
     graphics,
     purrr,

@@ -1,54 +1,58 @@
-#' @method autolayer TPreg
+#' @importFrom ggplot2 autolayer
 #' @export
 autolayer.TPreg <-
- function(tpreg_obj, ...,  model = NULL) {
-  # https://stackoverflow.com/a/7099056
-  # https://ggplot2.tidyverse.org/reference/automatic_plotting.html
-  # https://stackoverflow.com/a/47491926
+  function(object, ..., model = NULL) {
+    # https://stackoverflow.com/a/7099056
+    # https://ggplot2.tidyverse.org/reference/automatic_plotting.html
+    # https://stackoverflow.com/a/47491926
 
-  # Create tiddy tibble
-  tidy_tpreg <- tidy.TPreg(tpreg_obj)
-  # Add model name to
-  if (!is.null(model)) {
-    tidy_tpreg <- tidy_tpreg %>% tibble::add_column(model = model)
+    # Create tiddy tibble
+    tidy_tpreg <- tidy.TPreg(object)
+    # Add model name to
+    if (!is.null(model)) {
+      tidy_tpreg <- tidy_tpreg %>% tibble::add_column(model = model)
+    }
+
+    # Create the ggplot object
+    ggplot_layer <- geom_lineci(data = tidy_tpreg, ...)
+    return(ggplot_layer)
   }
 
-  # Create the ggplot object
-  ggplot_layer <- geom_lineci(data = tidy_tpreg, ...)
-  return(ggplot_layer)
-}
-
-#' @method autoplot TPreg
+#' @importFrom ggplot2 autoplot
 #' @export
 autoplot.TPreg <-
- function(tpreg_obj, ..., model = NULL) {
-  # Workaround to avoid cutting out ribbon confidence intervals
-  # https://stackoverflow.com/a/38777929
-  # should be mentioned in README/vignette
-  my_aes <- list(
-    color = ggplot2::sym("covar.val")
-  )
-  if (!is.null(model)) {
-    my_aes[["linetype"]] <- ggplot2::sym("model")
-  }
+  function(object, ..., model = NULL) {
+    # Workaround to avoid cutting out ribbon confidence intervals
+    # https://stackoverflow.com/a/38777929
+    # should be mentioned in README/vignette
 
-  tidy_tpreg <- tidy.TPreg(tpreg_obj)
-  ggplot_obj <- ggplot2::ggplot(
-    data = tidy_tpreg,
-    mapping = ggpubr::create_aes(my_aes)
-  ) +
-    autolayer.TPreg(tpreg_obj = tpreg_obj, ...) +
-    ggplot2::geom_hline(yintercept = 0, color = "red") +
-    ggplot2::geom_vline(xintercept = tpreg_obj$s) +
-    ggplot2::facet_wrap(~covar)
-  return(ggplot_obj)
-}
+    tidy_tpreg <- tidy.TPreg(object)
+
+    ggplot_obj <- if (is.null(model)) {
+      ggplot2::ggplot(
+        data = tidy_tpreg,
+        mapping = ggplot2::aes(color = covar.val)
+      )
+    } else {
+      ggplot2::ggplot(
+        data = tidy_tpreg,
+        mapping = ggplot2::aes(color = covar.val, linetype = model)
+      )
+    }
+
+    ggplot_obj <- ggplot_obj +
+      autolayer.TPreg(object = object, ...) +
+      ggplot2::geom_hline(yintercept = 0, color = "red") +
+      ggplot2::geom_vline(xintercept = object$s) +
+      ggplot2::facet_wrap(~covar)
+    return(ggplot_obj)
+  }
 
 
 #' @export
 plot.TPreg <-
   function(x, ...) {
-    autoplot.TPreg(x, ...)
+    autoplot.TPreg(object = x, ...)
   }
 
 plot_TPregs <- function(TPregs_tidy, s = NULL) {

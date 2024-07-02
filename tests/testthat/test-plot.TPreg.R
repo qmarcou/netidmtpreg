@@ -52,6 +52,9 @@ test_that("Plotting TPreg objects does not throw any error", {
     testthat::expect_no_error(
       plot(estimate2)
     )
+    testthat::expect_no_error(
+      autoplot.TPreg(estimate2, model = "test")
+    )
 
     # Test that resulting plots are composable ggplot objects
     # even with partially overlapping covariates
