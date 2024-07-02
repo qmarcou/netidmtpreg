@@ -20,7 +20,7 @@ test_that("Plotting TPreg objects does not throw any error", {
     )
   # for (transition in c("11", "all")) {
   for (transition in c("11")) {
-    estimate <-
+    estimate1 <-
       fit_netTPreg(~1, synth_idm_data,
         ratetable = NULL,
         rmap = NULL,
@@ -33,11 +33,11 @@ test_that("Plotting TPreg objects does not throw any error", {
         R = 10 # Number of bootstraps
       )
     testthat::expect_no_error(
-      plot(estimate)
+      plot(estimate1)
     )
 
     # Check with more than just an intercept
-    estimate <-
+    estimate2 <-
       fit_netTPreg(~sex, synth_idm_data,
         ratetable = NULL,
         rmap = NULL,
@@ -50,7 +50,17 @@ test_that("Plotting TPreg objects does not throw any error", {
         R = 10 # Number of bootstraps
       )
     testthat::expect_no_error(
-      plot(estimate)
+      plot(estimate2)
+    )
+
+    # Test that resulting plots are composable ggplot objects
+    # even with partially overlapping covariates
+    testthat::expect_no_error(
+      autoplot.TPreg(estimate1) + autolayer.TPreg(estimate2)
+    )
+    testthat::expect_no_error(
+      autoplot.TPreg(estimate1, model = "test") +
+        autolayer.TPreg(estimate2, model = "test2")
     )
   }
 })
