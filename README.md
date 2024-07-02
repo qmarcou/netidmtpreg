@@ -95,7 +95,7 @@ crude_synth_idm_data <- netidmtpreg:::apply_iddata_death(
 )
 ```
 
-Now let’s carry the of net survival estimation:
+Now let’s carry net survival estimation:
 
 ``` r
 # Estimation can be sped up and carried in parrallel using futures:
@@ -127,11 +127,80 @@ We obtain a `TPreg` object with a dedicated plotting method using
 ggplot:
 
 ``` r
-plot(net_estimate) + ggplot2::ylim(-5, 5)
+plot(net_estimate) + ggplot2::coord_cartesian(ylim = c(-5, 5))
 #> Warning: Removed 1 row containing missing values or values outside the scale range
 #> (`geom_line()`).
 ```
 
 <img src="man/figures/README-plot-1.png" width="100%" />
+
+*Warning: note the use of `ggplot2::coord_cartesian` instead of
+`ggplot2::ylim`. The former acts as a “zoom” command, while the latter
+acts as a filter on input data, and as such might prevent display of
+large confidence intervals.*
+
+The obtained TPreg plots are composable ggplot objects that can be
+combined. Let’s use this to compare our results with: 1) what would have
+been obtained without background mortality (‘ground truth’), and 2) what
+would have been obtained on the same data without taking into account
+population mortality (‘crude estimate’).
+
+``` r
+# Estimation can be sped up and carried in parrallel using futures:
+future::plan("multisession") # will work on any OS
+# future::plan("multicore") # more efficient but only works on UNIX systems
+crude_estimate <- fit_netTPreg(
+  formula = ~1, # intercept only model, similar to Pohar-Perme estimation
+  data = crude_synth_idm_data,
+  # Use a standard ratetable
+  ratetable = NULL,
+  s = 0.2,
+  by = n_ind / 10,
+  trans = "11",
+  link = "logit",
+  R = 100 # Number of bootstraps
+)
+#> [1] "estimate"
+#> [1] "bootstrap"
+
+truth_estimate <- fit_netTPreg(
+  formula = ~1, # intercept only model, similar to Pohar-Perme estimation
+  data = synth_idm_data, # data without added population mortality
+  # Use a standard ratetable
+  ratetable = NULL,
+  s = 0.2,
+  by = n_ind / 10,
+  trans = "11",
+  link = "logit",
+  R = 100 # Number of bootstraps
+)
+#> [1] "estimate"
+#> [1] "bootstrap"
+future::plan("sequential") # close the multisession, see future's documentation
+```
+
+You can use the reserved keyword `model` to set the model name and
+automatically set the linetype accordingly.
+
+``` r
+autoplot(net_estimate, model = "Net estimate") +
+  autolayer(crude_estimate, model = "Crude estimate") +
+  autolayer(truth_estimate, model = "Ground Truth") +
+  ggplot2::coord_cartesian(ylim = c(-5, 5))
+#> Warning: Removed 1 row containing missing values or values outside the scale range
+#> (`geom_line()`).
+#> Removed 1 row containing missing values or values outside the scale range
+#> (`geom_line()`).
+#> Removed 1 row containing missing values or values outside the scale range
+#> (`geom_line()`).
+```
+
+<img src="man/figures/README-plot_compare-1.png" width="100%" />
+
+These automated plotting routines are designed for quick inspection of
+the model. If you need more flexibility you can rely on [tidymodels
+`broom`](https://broom.tidymodels.org/articles/broom.html) style methods
+`tidy`, `augment` (*to be implemented*) and `glance` (*to be
+implemented*) to leverage `ggplot`’s flexibility.
 
 More examples to come\!
