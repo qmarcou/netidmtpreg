@@ -4,9 +4,6 @@ autolayer.TPreg <- function(tpreg_obj, ...) {
   # https://ggplot2.tidyverse.org/reference/automatic_plotting.html
   # https://stackoverflow.com/a/47491926
 
-  # BUG: cannot directly combine geoms this way without a background plot
-  # need to create a custom geom to bundele them:
-  # https://ggplot2-book.org/extensions#sec-combining-multiple-geoms
   tidy_tpreg <- tidy.TPreg(tpreg_obj)
   ggplot_layer <-  geom_lineci(data = tidy_tpreg, ...)
   return(ggplot_layer)
@@ -64,19 +61,21 @@ plot_TPregs <- function(TPregs_tidy, s = NULL) {
 geom_lineci <- function(mapping = NULL, data = NULL,
                         position = "identity",
                         ...,
-                        se = TRUE,
-                        na.rm = FALSE,
-                        orientation = NA,
-                        show.legend = NA,
-                        inherit.aes = TRUE) {
+                        fill = "#888888",
+                        alpha = 0.2,
+                        size = 0) {
   # Some references:
   # https://stackoverflow.com/a/32616695
   # https://github.com/tidyverse/ggplot2/blob/main/R/geom-smooth.R
   # https://ggplot2-book.org/extensions#sec-new-geoms
   list(
     ggplot2::geom_ribbon(
-      data = data, ggplot2::aes(x = t, ymin = LWL, ymax = UPL),
-      fill = "#888888", alpha = 0.2, size = 0, ...
+      data = data,
+      mapping = ggplot2::aes(x = t, ymin = LWL, ymax = UPL),
+      fill = fill,
+      alpha = alpha,
+      size = size,
+      ...
     ),
     ggplot2::geom_line(
       data = data,
