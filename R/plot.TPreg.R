@@ -1,30 +1,37 @@
 #' @export
-autolayer.TPreg <- function(tpreg_obj, model=NULL, ...) {
+autolayer.TPreg <- function(tpreg_obj, ...,  model = NULL) {
   # https://stackoverflow.com/a/7099056
   # https://ggplot2.tidyverse.org/reference/automatic_plotting.html
   # https://stackoverflow.com/a/47491926
 
   # Create tiddy tibble
   tidy_tpreg <- tidy.TPreg(tpreg_obj)
-  # Add model name to 
+  # Add model name to
   if (!is.null(model)) {
     tidy_tpreg <- tidy_tpreg %>% tibble::add_column(model = model)
   }
 
   # Create the ggplot object
-  ggplot_layer <-  geom_lineci(data = tidy_tpreg, ...)
+  ggplot_layer <- geom_lineci(data = tidy_tpreg, ...)
   return(ggplot_layer)
 }
 
 #' @export
-autoplot.TPreg <- function(tpreg_obj, ...) {
+autoplot.TPreg <- function(tpreg_obj, ..., model = NULL) {
   # Workaround to avoid cutting out ribbon confidence intervals
   # https://stackoverflow.com/a/38777929
   # should be mentioned in README/vignette
+  my_aes <- list(
+    color = ggplot2::sym("covar.val")
+  )
+  if (!is.null(model)) {
+    my_aes[["linetype"]] <- ggplot2::sym("model")
+  }
+
   tidy_tpreg <- tidy.TPreg(tpreg_obj)
   ggplot_obj <- ggplot2::ggplot(
     data = tidy_tpreg,
-    mapping = ggplot2::aes(color = covar.val, linetype = model)
+    mapping = ggpubr::create_aes(my_aes)
   ) +
     autolayer.TPreg(tpreg_obj = tpreg_obj, ...) +
     ggplot2::geom_hline(yintercept = 0, color = "red") +
