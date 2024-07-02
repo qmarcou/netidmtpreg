@@ -1,5 +1,7 @@
+#' @method autolayer TPreg
 #' @export
-autolayer.TPreg <- function(tpreg_obj, ...,  model = NULL) {
+autolayer.TPreg <-
+ function(tpreg_obj, ...,  model = NULL) {
   # https://stackoverflow.com/a/7099056
   # https://ggplot2.tidyverse.org/reference/automatic_plotting.html
   # https://stackoverflow.com/a/47491926
@@ -16,8 +18,10 @@ autolayer.TPreg <- function(tpreg_obj, ...,  model = NULL) {
   return(ggplot_layer)
 }
 
+#' @method autoplot TPreg
 #' @export
-autoplot.TPreg <- function(tpreg_obj, ..., model = NULL) {
+autoplot.TPreg <-
+ function(tpreg_obj, ..., model = NULL) {
   # Workaround to avoid cutting out ribbon confidence intervals
   # https://stackoverflow.com/a/38777929
   # should be mentioned in README/vignette
