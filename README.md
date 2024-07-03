@@ -56,7 +56,7 @@ library(tidyverse)
 #> ✖ dplyr::lag()    masks stats::lag()
 #> ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 
-n_ind <- 1e2 # number of simulated individuals
+n_ind <- 5e2 # number of simulated individuals
 
 # Generate exponentially distributed event times without censoring
 synth_idm_data <- generate_uncensored_ind_exp_idm_data(
@@ -127,17 +127,17 @@ We obtain a `TPreg` object with a dedicated plotting method using
 ggplot:
 
 ``` r
-plot(net_estimate) + ggplot2::coord_cartesian(ylim = c(-5, 5))
+plot(net_estimate) + ggplot2::coord_cartesian(ylim = c(-5, 5), clip = "off")
 #> Warning: Removed 1 row containing missing values or values outside the scale range
 #> (`geom_line()`).
 ```
 
 <img src="man/figures/README-plot-1.png" width="100%" />
 
-*Warning: note the use of `ggplot2::coord_cartesian` instead of
-`ggplot2::ylim`. The former acts as a “zoom” command, while the latter
-acts as a filter on input data, and as such might prevent display of
-large confidence intervals.*
+*Warning: note the use of `ggplot2::coord_cartesian` with `clip="off"`
+instead of `ggplot2::ylim`. The former acts as a “zoom” command, while
+the latter acts as a filter on input data, and as such might prevent
+display of large confidence intervals.*
 
 The obtained TPreg plots are composable ggplot objects that can be
 combined. Let’s use this to compare our results with: 1) what would have
@@ -186,7 +186,7 @@ automatically set the linetype accordingly.
 autoplot(net_estimate, model = "Net estimate") +
   autolayer(crude_estimate, model = "Crude estimate") +
   autolayer(truth_estimate, model = "Ground Truth") +
-  ggplot2::coord_cartesian(ylim = c(-5, 5))
+  ggplot2::coord_cartesian(ylim = c(-5, 5), xlim = c(0, 2), clip = "off")
 #> Warning: Removed 1 row containing missing values or values outside the scale range
 #> (`geom_line()`).
 #> Removed 1 row containing missing values or values outside the scale range

@@ -54,7 +54,7 @@ using the package. Let's first generate some data:
 library(netidmtpreg)
 library(tidyverse)
 
-n_ind <- 1e2 # number of simulated individuals
+n_ind <- 5e2 # number of simulated individuals
 
 # Generate exponentially distributed event times without censoring
 synth_idm_data <- generate_uncensored_ind_exp_idm_data(
@@ -121,10 +121,10 @@ future::plan("sequential") # close the multisession, see future's documentation
 We obtain a `TPreg` object with a dedicated plotting method using ggplot:
 
 ```{r plot}
-plot(net_estimate) + ggplot2::coord_cartesian(ylim = c(-5, 5))
+plot(net_estimate) + ggplot2::coord_cartesian(ylim = c(-5, 5), clip = "off")
 ```
 
-*Warning: note the use of `ggplot2::coord_cartesian` instead of `ggplot2::ylim`.
+*Warning: note the use of `ggplot2::coord_cartesian` with `clip="off"` instead of `ggplot2::ylim`.
 The former acts as a "zoom" command, while the latter acts as a filter on input
 data, and as such might prevent display of large confidence intervals.*
 
@@ -171,7 +171,7 @@ set the linetype accordingly.
 autoplot(net_estimate, model = "Net estimate") +
   autolayer(crude_estimate, model = "Crude estimate") +
   autolayer(truth_estimate, model = "Ground Truth") +
-  ggplot2::coord_cartesian(ylim = c(-5, 5))
+  ggplot2::coord_cartesian(ylim = c(-5, 5), xlim = c(0, 2), clip = "off")
 ```
 
 These automated plotting routines are designed for quick inspection of the model.
